@@ -53,7 +53,7 @@ drizzle/                generated migrations (committed)
 
 ## API
 
-- JSON in and out. Errors use one shape: `{ "error": { "code": "snake_case_code", "message": "Readable message", "fields": { "name": "..." } } }` (`fields` only for validation). Status codes: 400 validation, 401 not signed in, 403 not allowed, 404 not found (including other households' records), 409 conflict, 500 unexpected. A 500 response carries a generic message; details go to the logs only.
+- JSON in and out. Errors use one shape: `{ "error": { "code": "snake_case_code", "message": "Readable message", "fields": { "name": "..." } } }` (`fields` for validation errors and for a 409 on a unique value, naming the field). Status codes: 400 validation, 401 not signed in, 403 not allowed, 404 not found (including other households' records), 409 conflict, 500 unexpected. A 500 response carries a generic message; details go to the logs only.
 - Every route handler is wrapped with `route()` from `src/lib/http/route.ts`, which sets up the request context, logs the request, and maps errors to the shape above.
 
 ## Logging

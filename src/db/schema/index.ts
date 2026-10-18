@@ -3,3 +3,8 @@ export * from "./session.ts";
 export * from "./account.ts";
 export * from "./verification.ts";
 export * from "./user-preference.ts";
+export * from "./household.ts";
+export * from "./member.ts";
+export * from "./meal-slot.ts";
+export * from "./member-meal-slot.ts";
+export * from "./shopping-trip.ts";

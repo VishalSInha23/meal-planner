@@ -1,8 +1,9 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { unauthorized } from "@/lib/http/errors";
+import { adminOnly, noHousehold, unauthorized } from "@/lib/http/errors";
 import { getRequestContext, setLogUser } from "@/lib/log/request-context";
+import { findCurrentMember, type CurrentMember } from "@/modules/member/member-service";
 import { getAuth } from "./auth";
 
 export interface SessionUser {
@@ -32,4 +33,20 @@ export async function requireUser(): Promise<SessionUser> {
   if (user) return user;
   if (getRequestContext()) throw unauthorized();
   redirect("/sign-in");
+}
+
+// The signed-in user's member with its household. Pages without a household go to onboarding;
+// route handlers answer 403 no_household. The household id always comes from here.
+export async function requireMember(): Promise<CurrentMember> {
+  const user = await requireUser();
+  const member = await findCurrentMember(user.id);
+  if (member) return member;
+  if (getRequestContext()) throw noHousehold();
+  redirect("/onboarding");
+}
+
+export async function requireAdmin(): Promise<CurrentMember> {
+  const member = await requireMember();
+  if (!member.isAdmin) throw adminOnly();
+  return member;
 }

@@ -22,8 +22,11 @@ export const badRequest = (message = "Invalid request", fields?: Record<string, 
   new AppError(400, "validation_failed", message, fields);
 export const unauthorized = (message = "Not signed in") => new AppError(401, "unauthorized", message);
 export const forbidden = (message = "Not allowed") => new AppError(403, "forbidden", message);
+export const adminOnly = () => new AppError(403, "admin_only", "Only admins can do this");
+export const noHousehold = () => new AppError(403, "no_household", "Finish setting up your household first");
 export const notFound = (message = "Not found") => new AppError(404, "not_found", message);
-export const conflict = (message = "Conflict") => new AppError(409, "conflict", message);
+export const conflict = (message = "Conflict", fields?: Record<string, string>) =>
+  new AppError(409, "conflict", message, fields);
 
 export function fromZodError(error: z.ZodError): AppError {
   const fields: Record<string, string> = {};
