@@ -1,0 +1,35 @@
+import { cache } from "react";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { unauthorized } from "@/lib/http/errors";
+import { getRequestContext, setLogUser } from "@/lib/log/request-context";
+import { getAuth } from "./auth";
+
+export interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+}
+
+// Cached per render, so a layout and a page asking for the user cost one lookup.
+const readSessionUser = cache(async (): Promise<SessionUser | null> => {
+  // Reading the headers first makes the page dynamic, so a build never needs the auth secrets.
+  const requestHeaders = await headers();
+  const session = await getAuth().api.getSession({ headers: requestHeaders });
+  return session?.user ?? null;
+});
+
+export async function getUser(): Promise<SessionUser | null> {
+  const user = await readSessionUser();
+  if (user) setLogUser(user.id);
+  return user;
+}
+
+// Pages (no request context) redirect to the sign-in page. Route handlers throw a 401.
+export async function requireUser(): Promise<SessionUser> {
+  const user = await getUser();
+  if (user) return user;
+  if (getRequestContext()) throw unauthorized();
+  redirect("/sign-in");
+}
