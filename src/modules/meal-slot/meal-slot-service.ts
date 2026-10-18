@@ -1,5 +1,6 @@
 import { uniqueViolation } from "@/db/errors";
-import { conflict, notFound } from "@/lib/http/errors";
+import { AppError, conflict, notFound } from "@/lib/http/errors";
+import * as memberRepository from "../member/member-repository.ts";
 import * as repository from "./meal-slot-repository.ts";
 import type { CreateMealSlot, MealSlot, UpdateMealSlot } from "./meal-slot-schema.ts";
 
@@ -38,7 +39,18 @@ export async function updateMealSlot(householdId: string, id: string, input: Upd
   }
 }
 
-// Meals using the slot will block this once meals exist.
+// A household keeps at least one slot, and every member keeps at least one. Meals using the slot will block this once meals exist.
 export async function removeMealSlot(householdId: string, id: string): Promise<void> {
+  const slots = await repository.listByHousehold(householdId);
+  if (!slots.some((slot) => slot.id === id)) throw notFound("Meal slot not found");
+  if (slots.length === 1) {
+    throw new AppError(409, "last_slot", "A household needs at least one meal slot");
+  }
+  const onlyHere = (await memberRepository.listByHousehold(householdId)).find(
+    (item) => item.slotIds.length === 1 && item.slotIds[0] === id,
+  );
+  if (onlyHere) {
+    throw new AppError(409, "member_needs_slot", `${onlyHere.name} eats only in this slot`);
+  }
   if (!(await repository.remove(householdId, id))) throw notFound("Meal slot not found");
 }

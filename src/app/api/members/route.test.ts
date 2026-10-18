@@ -118,16 +118,18 @@ describe("/api/members", () => {
     const fixture = await createHouseholdFixture("a");
     signInAs(fixture.adminUserId);
     const kid = await (await post(memberBody([fixture.slotIds[0]]))).json();
+    const plain = await addAccountMember(fixture.householdId, fixture.slotIds);
+    expect((await patch(plain.memberId, { isAdmin: true })).status).toBe(200);
     const response = await patch(kid.id, {
       name: "Kid Two",
-      isAdmin: true,
+      isAdmin: false,
       kcalTarget: 2000,
       slotIds: fixture.slotIds,
       dateOfBirth: "2015-05-05",
     });
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body).toMatchObject({ name: "Kid Two", isAdmin: true, kcalTarget: 2000, dateOfBirth: "2015-05-05", ageBand: "6-10" });
+    expect(body).toMatchObject({ name: "Kid Two", isAdmin: false, kcalTarget: 2000, dateOfBirth: "2015-05-05", ageBand: "6-10" });
     expect(body.slotIds.toSorted()).toEqual(fixture.slotIds.toSorted());
 
     const cleared = await patch(kid.id, { kcalTarget: null, slotIds: [fixture.slotIds[1]] });
@@ -207,6 +209,31 @@ describe("/api/members", () => {
     expect((await del(kid.id)).status).toBe(204);
     expect(await getDb().select().from(member).where(eq(member.id, kid.id))).toHaveLength(0);
     expect(await getDb().select().from(memberMealSlot).where(eq(memberMealSlot.memberId, kid.id))).toHaveLength(0);
+  });
+
+  it("answers 400 on isAdmin when making a member without an account an admin", async () => {
+    const fixture = await createHouseholdFixture("a");
+    signInAs(fixture.adminUserId);
+    const kid = await (await post(memberBody(fixture.slotIds))).json();
+    const response = await patch(kid.id, { isAdmin: true });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.fields).toEqual({ isAdmin: "Only members with an account can be admins" });
+    const [row] = await getDb().select().from(member).where(eq(member.id, kid.id));
+    expect(row.isAdmin).toBe(false);
+  });
+
+  it("answers 409 last_admin when the only admin removes their own admin right, and allows it with a second admin", async () => {
+    const fixture = await createHouseholdFixture("a");
+    const plain = await addAccountMember(fixture.householdId, fixture.slotIds);
+    signInAs(fixture.adminUserId);
+    const response = await patch(fixture.adminMemberId, { isAdmin: false });
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatchObject({ code: "last_admin", message: "Make someone else an admin first" });
+    const [still] = await getDb().select().from(member).where(eq(member.id, fixture.adminMemberId));
+    expect(still.isAdmin).toBe(true);
+
+    expect((await patch(plain.memberId, { isAdmin: true })).status).toBe(200);
+    expect((await patch(fixture.adminMemberId, { isAdmin: false })).status).toBe(200);
   });
 
   it("answers 409 member_has_account when removing a member with an account", async () => {

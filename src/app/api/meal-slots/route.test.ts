@@ -128,4 +128,34 @@ describe("/api/meal-slots", () => {
     expect(links).toEqual([{ memberId: fixture.adminMemberId, mealSlotId: fixture.slotIds[1] }]);
     expect(await getDb().select().from(member)).toHaveLength(1);
   });
+
+  it("answers 409 last_slot when deleting the only slot, and allows it when another exists", async () => {
+    const fixture = await createHouseholdFixture("a");
+    signInAs(fixture.adminUserId);
+    expect((await del(fixture.slotIds[0])).status).toBe(204);
+    const response = await del(fixture.slotIds[1]);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatchObject({
+      code: "last_slot",
+      message: "A household needs at least one meal slot",
+    });
+    expect(await getDb().select().from(mealSlot)).toHaveLength(1);
+  });
+
+  it("answers 409 member_needs_slot naming the member whose only slot it is, and allows it when they have another", async () => {
+    const fixture = await createHouseholdFixture("a");
+    signInAs(fixture.adminUserId);
+    const plain = await addAccountMember(fixture.householdId, [fixture.slotIds[0]]);
+    await getDb().update(member).set({ name: "Priya" }).where(eq(member.id, plain.memberId));
+    const response = await del(fixture.slotIds[0]);
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toMatchObject({
+      code: "member_needs_slot",
+      message: "Priya eats only in this slot",
+    });
+    expect(await getDb().select().from(mealSlot)).toHaveLength(2);
+
+    await getDb().insert(memberMealSlot).values({ memberId: plain.memberId, mealSlotId: fixture.slotIds[1] });
+    expect((await del(fixture.slotIds[0])).status).toBe(204);
+  });
 });

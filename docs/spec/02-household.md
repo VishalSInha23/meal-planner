@@ -7,12 +7,14 @@
 - Each account member edits their own details.
 - Everyone edits dishes and meals.
 - Members with accounts can't be removed in this version (only one account per household exists until joining is supported).
+- Only members with an account can be admins (setting admin on a member without an account is a 400 on `isAdmin`).
+- A household always has an admin: an admin can't remove their own admin right while nobody else is admin (409 `last_admin`, "Make someone else an admin first").
 
 ## Settings
 
 - **Name**, **timezone** and **week start day**. The timezone decides what "today" is, where weeks begin and end, and how grocery lists are cut. Changing the week start day changes how weeks are shown and cut; meals stay on their dates, and "week planned" marks made for the old week starts no longer apply.
 - **Planning reminder time**: stored for later reminders. The planning deadline is always the day before the week start day (week starts Monday, the deadline is Sunday; week starts Wednesday, it is Tuesday).
-- **Meal slots**: name (1–30 characters, unique in the household), time of day, shown in time order. Changing a slot's time keeps its meals in that slot. A slot that any meal uses can't be removed; the message says how many meals use it.
+- **Meal slots**: name (1–30 characters, unique in the household), time of day, shown in time order. Changing a slot's time keeps its meals in that slot. A slot that any meal uses can't be removed; the message says how many meals use it. The household's only slot can't be deleted (409 `last_slot`), and neither can a slot that is some member's only slot (409 `member_needs_slot`, "Priya eats only in this slot").
 - **Shopping trips**: a day of the week and a time each, unique. They decide how grocery lists are cut (`05-grocery-lists.md`).
 
 ## Members
