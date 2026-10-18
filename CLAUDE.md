@@ -71,6 +71,9 @@ drizzle/                generated migrations (committed)
 - Two colours only, `ink` and `paper`, from the brand config. Other shades are ink at an opacity. Nothing relies on colour alone: over or under a target is shown with text and ▲ or ▼.
 - Body text at least 16 px, font weight at least 400, borders at least 1.5 px, no shadows or gradients, touch targets at least 44 px. Phone first; desktop must work too.
 - Feedback: a pressed state on every button, a spinner on the control that started an async action (which is disabled meanwhile), errors shown inline next to what failed. No toasts, banners or in-app notifications.
+- Buttons show an icon (`lucide-react`), not text. Every icon button has an `aria-label` and a matching `title` tooltip; when a task names a button ("Add dish"), that name is its label. Text stays only where an icon alone can't say it: the sign-in button and the final confirmation of a destructive action.
+- Theme: light or dark only, no "system" option. Until someone picks one, the page follows the device setting.
+- Layout: dashboard style. Navigation is a menu on the left: a fixed sidebar on wide screens (768 px and up), and on phones a drawer that slides in from the left, opened by a menu icon button in the header. Content is grouped in cards (`Card` from `src/components/ui/card.tsx`: 1.5 px ink border, rounded corners, padding, no shadow), laid out in a grid that becomes one column on phones.
 - Accessible: every input labelled, focus visible, everything works by keyboard.
 
 ## Tests

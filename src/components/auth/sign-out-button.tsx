@@ -1,8 +1,9 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { authClient } from "@/lib/auth/auth-client";
 
 export function SignOutButton() {
@@ -25,9 +26,9 @@ export function SignOutButton() {
 
   return (
     <div className="flex flex-col gap-2">
-      <Button loading={loading} onClick={signOut}>
-        Sign out
-      </Button>
+      <IconButton label="Sign out" loading={loading} onClick={signOut}>
+        <LogOut size={20} />
+      </IconButton>
       {error && <p role="alert">{error}</p>}
     </div>
   );

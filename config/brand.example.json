@@ -1,0 +1,12 @@
+{
+  "name": "Ceres",
+  "icon": "/brand/icon.svg",
+  "headerDisplay": "text",
+
+  "colors": {
+    "light": { "ink": "#1F1E1D", "paper": "#F4F3EE" },
+    "dark": { "ink": "#F4F3EE", "paper": "#1F1E1D" }
+  },
+
+  "fonts": { "sans": "Inter", "serif": "Source Serif 4", "defaultStyle": "serif" }
+}

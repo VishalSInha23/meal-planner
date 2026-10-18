@@ -1,12 +1,5 @@
-import { SignOutButton } from "@/components/auth/sign-out-button";
-import { requireUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
-export default async function HomePage() {
-  const user = await requireUser();
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
-      <p>Signed in as {user.email}</p>
-      <SignOutButton />
-    </main>
-  );
+export default function HomePage() {
+  redirect("/plan");
 }

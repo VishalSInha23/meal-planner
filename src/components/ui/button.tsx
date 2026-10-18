@@ -1,34 +1,39 @@
 import type { ButtonHTMLAttributes } from "react";
+import { Spinner } from "./spinner";
+
+export type ButtonVariant = "primary" | "secondary" | "ghost";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
   // Shows a spinner and disables the button while an async action runs.
   loading?: boolean;
 }
 
-export function Button({ loading = false, disabled, children, className = "", type = "button", ...props }: ButtonProps) {
+export const buttonVariants: Record<ButtonVariant, string> = {
+  primary: "border-ink bg-ink text-paper active:bg-ink/80",
+  secondary: "border-ink bg-transparent text-ink active:bg-ink/15",
+  ghost: "border-transparent bg-transparent text-ink active:bg-ink/15",
+};
+
+export function Button({
+  variant = "primary",
+  loading = false,
+  disabled,
+  children,
+  className = "",
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
     <button
       type={type}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
-      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md border-[1.5px] border-current px-4 text-base font-medium outline-offset-2 focus-visible:outline-2 active:bg-current/20 disabled:opacity-60 ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-md border-[1.5px] px-4 text-base font-medium transition-transform duration-100 active:scale-[0.97] disabled:opacity-60 motion-reduce:transition-none ${buttonVariants[variant]} ${className}`}
       {...props}
     >
       {loading && <Spinner />}
       {children}
     </button>
-  );
-}
-
-// With "reduce motion" on, the spinner is replaced by the text "Loading…".
-function Spinner() {
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className="inline-block size-4 animate-spin rounded-full border-[1.5px] border-current border-t-transparent motion-reduce:hidden"
-      />
-      <span className="hidden motion-reduce:inline">Loading…</span>
-    </>
   );
 }
