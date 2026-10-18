@@ -1,3 +1,12 @@
 .DS_Store
 .claude/
 .prompts/
+node_modules/
+.next/
+coverage/
+.env
+config/*.json
+!config/*.example.json
+src/config/generated/
+next-env.d.ts
+*.tsbuildinfo
