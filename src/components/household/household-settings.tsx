@@ -7,8 +7,12 @@ import { FieldError } from "@/components/ui/field-parts";
 import { apiRequest } from "@/lib/http/api-client";
 import type { HouseholdOverview } from "@/modules/household/household-schema";
 import type { Units } from "@/modules/user-preference/user-preference-schema";
+import type { RequestRow } from "./join-request-dialog";
 import { SettingsHouseholdCard } from "./settings-household-card";
+import { SettingsJoinCodeCard } from "./settings-join-code-card";
+import { SettingsLeaveCard } from "./settings-leave-card";
 import { SettingsMembersCard } from "./settings-members-card";
+import { SettingsRequestsCard } from "./settings-requests-card";
 import { SettingsSlotsCard } from "./settings-slots-card";
 import { SettingsTripsCard } from "./settings-trips-card";
 
@@ -18,22 +22,30 @@ export interface HouseholdSettingsProps {
   meId: string;
   // The signed-in user's height and weight units.
   units: Units;
+  // For admins: the household's join code and the requests to join it.
+  joinCode?: string;
+  requests?: RequestRow[];
 }
 
-export function HouseholdSettings({ initial, meId, units }: HouseholdSettingsProps) {
+export function HouseholdSettings({ initial, meId, units, joinCode, requests: initialRequests = [] }: HouseholdSettingsProps) {
   const [overview, setOverview] = useState(initial);
   const [loadError, setLoadError] = useState<string>();
+  const [requests, setRequests] = useState(initialRequests);
   const viewer = overview.members.find((member) => member.id === meId);
 
   // After any change the server holds the truth: slot order, member slots after a slot is removed, and so on.
   async function reload() {
-    const result = await apiRequest<HouseholdOverview>("GET", "/api/household");
+    const [result, pending] = await Promise.all([
+      apiRequest<HouseholdOverview>("GET", "/api/household"),
+      viewer?.isAdmin ? apiRequest<RequestRow[]>("GET", "/api/household/join-requests") : undefined,
+    ]);
     if (result.ok) {
       setOverview(result.data);
       setLoadError(undefined);
     } else {
       setLoadError(result.message);
     }
+    if (pending?.ok) setRequests(pending.data);
   }
 
   if (!viewer) return null;
@@ -55,7 +67,16 @@ export function HouseholdSettings({ initial, meId, units }: HouseholdSettingsPro
         <SettingsHouseholdCard household={overview.household} isAdmin={viewer.isAdmin} reload={reload} />
         <SettingsSlotsCard slots={overview.mealSlots} isAdmin={viewer.isAdmin} reload={reload} />
         <SettingsTripsCard trips={overview.shoppingTrips} isAdmin={viewer.isAdmin} reload={reload} />
+        {viewer.isAdmin && joinCode !== undefined && <SettingsJoinCodeCard initialCode={joinCode} />}
+        {viewer.isAdmin && (
+          <SettingsRequestsCard
+            requests={requests}
+            linkable={overview.members.filter((member) => member.userId === null)}
+            reload={reload}
+          />
+        )}
         <SettingsMembersCard overview={overview} viewer={viewer} units={units} reload={reload} />
+        <SettingsLeaveCard householdName={overview.household.name} />
       </div>
     </div>
   );

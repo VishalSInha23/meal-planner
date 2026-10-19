@@ -1,0 +1,1 @@
+ALTER TABLE "join_request" ADD COLUMN "confirmed_delete_household" boolean DEFAULT false NOT NULL;

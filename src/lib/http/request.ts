@@ -6,6 +6,11 @@ export async function parseBody<S extends z.ZodType>(request: Request, schema: S
   return schema.parse(await request.json().catch(() => undefined));
 }
 
+// Like parseBody, for a body that may be left out: an empty or malformed body is read as {}.
+export async function parseOptionalBody<S extends z.ZodType>(request: Request, schema: S): Promise<z.output<S>> {
+  return schema.parse(await request.json().catch(() => ({})));
+}
+
 // A record id from the URL. Anything that is not a uuid can't exist, so it is not found.
 export async function idParam(params: Promise<{ id: string }>): Promise<string> {
   const parsed = z.uuid().safeParse((await params).id);

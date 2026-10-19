@@ -22,6 +22,10 @@ import {
 import type { FieldErrors, MemberDraft } from "@/components/household/member-draft";
 import { SlotRow } from "@/components/household/slot-row";
 import { TripRow } from "@/components/household/trip-row";
+import { JoinCodeForm, type JoinYou } from "@/components/join/join-code-form";
+import type { JoinRequestView } from "@/components/join/join-helpers";
+import { JoinRequestStatus } from "@/components/join/join-request-status";
+import { ActionCard } from "@/components/ui/action-card";
 import { Card } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-parts";
 import { IconButton } from "@/components/ui/icon-button";
@@ -31,10 +35,26 @@ import { apiRequest } from "@/lib/http/api-client";
 
 const STEP_TITLES: Record<Step, string> = { 1: "About you", 2: "Your household", 3: "Other members" };
 
-export function OnboardingForm({ userName }: { userName: string }) {
+// "form" is the three steps of creating a household; after "About you" the person first chooses between creating and joining.
+type View = "form" | "choose" | "join";
+
+export interface OnboardingFormProps {
+  userName: string;
+  // The account's pending or declined request to join a household.
+  joinRequest: JoinRequestView | null;
+  // The details of that request, to prefill "About you" if the person goes on to create or ask again.
+  requestYou: JoinYou | null;
+}
+
+export function OnboardingForm({ userName, joinRequest, requestYou }: OnboardingFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
-  const [state, setState] = useState<OnboardingState>(() => initialState(userName));
+  const [view, setView] = useState<View>("form");
+  const [request, setRequest] = useState(joinRequest);
+  const [state, setState] = useState<OnboardingState>(() => {
+    const initial = initialState(userName);
+    return requestYou ? { ...initial, you: { ...initial.you, ...requestYou } } : initial;
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
@@ -47,7 +67,7 @@ export function OnboardingForm({ userName }: { userName: string }) {
       return;
     }
     headingRef.current?.focus();
-  }, [step]);
+  }, [step, view, request]);
 
   // Editing clears the errors shown; they come back if the next try is still wrong.
   function edit(change: (current: OnboardingState) => OnboardingState) {
@@ -65,7 +85,9 @@ export function OnboardingForm({ userName }: { userName: string }) {
     if (step < 3) {
       const here = result.ok ? {} : fieldsOfStep(result.fields, step);
       setErrors(here);
-      if (Object.keys(here).length === 0) setStep((step + 1) as Step);
+      if (Object.keys(here).length > 0) return;
+      if (step === 1) setView("choose");
+      else setStep((step + 1) as Step);
       return;
     }
     if (!result.ok) {
@@ -85,6 +107,63 @@ export function OnboardingForm({ userName }: { userName: string }) {
     setErrors(response.fields);
     if (target) setStep(target);
     else setFormError(response.message);
+  }
+
+  // A request was cancelled or dismissed: back to the choice, or to "About you" first when it isn't filled in.
+  function afterRequest() {
+    const result = validateOnboarding(state);
+    const aboutYou = result.ok ? {} : fieldsOfStep(result.fields, 1);
+    setRequest(null);
+    setStep(1);
+    setView(Object.keys(aboutYou).length === 0 ? "choose" : "form");
+  }
+
+  if (request) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-offset-4">
+          Join a household
+        </h1>
+        <JoinRequestStatus
+          request={request}
+          onResolved={afterRequest}
+          onChecked={(next) => (next ? setRequest(next) : router.replace("/plan"))}
+        />
+      </div>
+    );
+  }
+
+  if (view === "choose" || view === "join") {
+    const you: JoinYou = { name: state.you.name, sex: state.you.sex as JoinYou["sex"], dateOfBirth: state.you.dateOfBirth };
+    return (
+      <div className="flex flex-col gap-4">
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-semibold outline-offset-4">
+          {view === "choose" ? "Your household" : "Join a household"}
+        </h1>
+        {view === "choose" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <ActionCard
+              title="Create a household"
+              description="Set up meal slots and add the people who eat with you"
+              onClick={() => {
+                setView("form");
+                setStep(2);
+              }}
+            />
+            <ActionCard title="Join a household" description="Use the code an admin of the household gave you" onClick={() => setView("join")} />
+          </div>
+        ) : (
+          <Card>
+            <JoinCodeForm autoFocus you={you} onSent={setRequest} />
+          </Card>
+        )}
+        <div>
+          <IconButton label="Back" onClick={() => setView(view === "join" ? "choose" : "form")}>
+            <ArrowLeft size={20} aria-hidden="true" />
+          </IconButton>
+        </div>
+      </div>
+    );
   }
 
   const slotChoices = state.slots.map((slot) => ({ id: slot.key, name: slot.name }));

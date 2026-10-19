@@ -18,6 +18,10 @@ export const householdNameSchema = z.string().trim().min(1, "Give the household 
 // 0 = Sunday ... 6 = Saturday.
 export const weekStartDaySchema = z.number().int("Pick a day").min(0, "Pick a day").max(6, "Pick a day");
 
+export const leaveHouseholdSchema = z.object({ confirmDeleteHousehold: z.boolean().optional() }).strict();
+
+export type LeaveHousehold = z.infer<typeof leaveHouseholdSchema>;
+
 export const updateHouseholdSchema = z
   .object({
     name: householdNameSchema,

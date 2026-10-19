@@ -6,7 +6,7 @@
 - Admins edit the household settings, the meal slots, the shopping trips, the members without accounts, and which slots any member eats in.
 - Each account member edits their own details.
 - Everyone edits dishes and meals.
-- Members with accounts can't be removed in this version (only one account per household exists until joining is supported).
+- Admins approve requests to join, see and regenerate the join code, and can remove other account members; any account member can leave (`08-joining.md`).
 - Only members with an account can be admins (setting admin on a member without an account is a 400 on `isAdmin`).
 - A household always has an admin: an admin can't remove their own admin right while nobody else is admin (409 `last_admin`, "Make someone else an admin first").
 

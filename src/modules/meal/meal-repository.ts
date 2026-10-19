@@ -158,3 +158,8 @@ export async function removeEmptyMeals(householdId: string, db: DbOrTx = getDb()
     .delete(meal)
     .where(and(eq(meal.householdId, householdId), notExists(db.select({ id: mealDish.id }).from(mealDish).where(eq(mealDish.mealId, meal.id)))));
 }
+
+// Deletes all the household's meals; their dishes and ticks go with them.
+export async function removeAllMeals(householdId: string, db: DbOrTx = getDb()): Promise<void> {
+  await db.delete(meal).where(eq(meal.householdId, householdId));
+}

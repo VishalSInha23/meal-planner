@@ -106,3 +106,10 @@ export async function replaceIngredients(dishId: string, ingredientIds: string[]
   if (ingredientIds.length === 0) return;
   await db.insert(dishIngredient).values(ingredientIds.map((ingredientId) => ({ dishId, ingredientId })));
 }
+
+// Deletes the ingredient links of all the household's dishes, so that its ingredients can be deleted after.
+export async function removeAllDishIngredients(householdId: string, db: DbOrTx = getDb()): Promise<void> {
+  await db
+    .delete(dishIngredient)
+    .where(inArray(dishIngredient.dishId, db.select({ id: dish.id }).from(dish).where(eq(dish.householdId, householdId))));
+}

@@ -4,12 +4,16 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AppearanceSettings } from "@/components/appearance/appearance-settings";
 import { Card } from "@/components/ui/card";
 import { UnitsSettings } from "@/components/units/units-settings";
-import { requireUser } from "@/lib/auth/session";
+import { SettingsJoin } from "@/components/join/settings-join";
+import { toRequestView } from "@/components/join/join-helpers";
+import { requireMember, requireUser } from "@/lib/auth/session";
+import { getMyJoinRequest } from "@/modules/join-request/join-request-service";
 import { getPreferences } from "@/modules/user-preference/user-preference-service";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const { weightUnit, heightUnit } = await getPreferences(user.id);
+  const member = await requireMember();
+  const [{ weightUnit, heightUnit }, request] = await Promise.all([getPreferences(user.id), getMyJoinRequest(user.id)]);
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-2xl font-semibold">Settings</h1>
@@ -30,6 +34,7 @@ export default async function SettingsPage() {
           </span>
           <ChevronRight size={24} aria-hidden="true" />
         </Link>
+        <SettingsJoin householdName={member.household.name} initialRequest={toRequestView(request)} />
         <Card title="Account" actions={<SignOutButton />}>
           <p>
             <span className="font-medium">Email: </span>

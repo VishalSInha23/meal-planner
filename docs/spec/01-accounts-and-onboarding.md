@@ -8,7 +8,7 @@
 
 ## Onboarding
 
-An account without a household always goes to onboarding, and the rest of the app is unavailable until it is finished. Onboarding has three steps. Moving back and forward keeps what was entered. Nothing is saved until the last step is submitted; then the household and all its members are created together, or nothing is (one transaction).
+An account without a household always goes to onboarding, and the rest of the app is unavailable until it is finished. After "About you", the person either creates a household (the steps below) or asks to join one with its code (`08-joining.md`). Creating has three steps. Moving back and forward keeps what was entered. Nothing is saved until the last step is submitted; then the household and all its members are created together, or nothing is (one transaction).
 
 1. **About you**: name (prefilled from the Google account), sex (male or female, required), date of birth (required; it can't be in the future or less than one year ago).
 2. **Household**:

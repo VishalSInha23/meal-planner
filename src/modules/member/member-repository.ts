@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { member, memberMealSlot } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
@@ -148,4 +148,44 @@ export async function idsInSlot(householdId: string, mealSlotId: string, db: DbO
     .innerJoin(member, eq(member.id, memberMealSlot.memberId))
     .where(and(eq(member.householdId, householdId), eq(memberMealSlot.mealSlotId, mealSlotId)));
   return rows.map((row) => row.memberId);
+}
+
+// How many members of the household have an account, and how many of those are admins.
+export async function countAccountMembers(
+  householdId: string,
+  db: DbOrTx = getDb(),
+): Promise<{ accounts: number; admins: number }> {
+  const [row] = await db
+    .select({ accounts: count(), admins: count(sql`case when ${member.isAdmin} then 1 end`) })
+    .from(member)
+    .where(and(eq(member.householdId, householdId), isNotNull(member.userId)));
+  return { accounts: row.accounts, admins: row.admins };
+}
+
+// Locks the household's account members until the transaction ends, so concurrent leaves and removals run one at a time.
+// Rows are locked in id order so two transactions can't wait on each other.
+export async function lockAccountMembers(householdId: string, db: DbOrTx): Promise<void> {
+  await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.householdId, householdId), isNotNull(member.userId)))
+    .orderBy(asc(member.id))
+    .for("update");
+}
+
+// Gives a member without an account to the account, replacing name, sex and date of birth and clearing the age band.
+// Returns null when the household has no such member or it has an account by now.
+export async function giveToAccount(
+  householdId: string,
+  id: string,
+  userId: string,
+  values: { name: string; sex: "male" | "female"; dateOfBirth: string },
+  db: DbOrTx,
+): Promise<Member | null> {
+  const [row] = await db
+    .update(member)
+    .set({ ...values, userId, ageBand: null })
+    .where(and(eq(member.householdId, householdId), eq(member.id, id), isNull(member.userId)))
+    .returning();
+  return row ? toMember(row) : null;
 }

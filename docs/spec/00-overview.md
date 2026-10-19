@@ -27,7 +27,8 @@ The intended rhythm: once a week, before the planning deadline, the household sp
 - `05-grocery-lists.md`: how grocery lists are cut and which one is current.
 - `06-look-and-settings.md`: brand, theme, fonts, app settings, navigation.
 - `07-diet-calculator.md`: how suggested daily kcal and protein targets are calculated.
+- `08-joining.md`: join codes, requests, approving, leaving and removing members.
 
 ## Not in this version
 
-Joining another household, notifications, portion sizes, ingredient quantities and units, recipes, offline use, languages other than English.
+Notifications, portion sizes, ingredient quantities and units, recipes, offline use, languages other than English.
