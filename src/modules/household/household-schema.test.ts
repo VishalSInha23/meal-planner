@@ -10,7 +10,7 @@ describe("timezoneSchema", () => {
   });
 
   it("rejects anything else", () => {
-    for (const value of ["", "Mars/Olympus", "London", "+01:00", "EST5EDT", "Europe/"]) {
+    for (const value of ["", "Mars/Base", "Mars/Olympus", "London", "+01:00", "EST5EDT", "Europe/"]) {
       expect(timezoneSchema.safeParse(value).success, value).toBe(false);
     }
   });
@@ -42,6 +42,18 @@ describe("onboardingSchema", () => {
     const input = validOnboarding();
     input.you.slotPositions = [];
     expect(onboardingSchema.safeParse(input).success).toBe(false);
+  });
+
+  it("requires your date of birth, and keeps it within range", () => {
+    const missing = validOnboarding();
+    delete (missing.you as { dateOfBirth?: string }).dateOfBirth;
+    expect(onboardingSchema.safeParse(missing).error?.issues[0].path).toEqual(["you", "dateOfBirth"]);
+    const future = validOnboarding();
+    future.you.dateOfBirth = "2999-01-01";
+    expect(onboardingSchema.safeParse(future).error?.issues[0]).toMatchObject({
+      path: ["you", "dateOfBirth"],
+      message: "The date of birth can't be in the future",
+    });
   });
 
   it("limits the household name to 60 characters", () => {

@@ -8,3 +8,6 @@ export * from "./member.ts";
 export * from "./meal-slot.ts";
 export * from "./member-meal-slot.ts";
 export * from "./shopping-trip.ts";
+export * from "./ingredient.ts";
+export * from "./dish.ts";
+export * from "./dish-ingredient.ts";

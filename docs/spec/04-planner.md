@@ -10,7 +10,7 @@
 
 - Each day lists the household's meal slots in time order. A slot shows its dishes, and under each dish who eats it.
 - Tapping a slot on a day opens the meal editor:
-  - **Add a dish**: search the household's (not archived) dishes, or type a new name to create a dish on the spot with just that name. A dish added this way is ticked for every member who eats in that slot.
+  - **Add a dish**: search the household's dishes, or type a new name to create a dish on the spot with just that name. A dish added this way is ticked for every member who eats in that slot.
   - **Who eats it**: tick or untick each household member for each dish. Any member can be ticked, including one who doesn't usually eat in that slot. A dish nobody is ticked for stays in the meal but counts for nobody and adds nothing to the grocery list.
   - **Remove** a dish from the meal.
 - A dish can be in a meal only once. Example, Thursday lunch: rice and dal ticked for the parents, cauliflower curry for everyone, roti only for the son.

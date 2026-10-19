@@ -2,6 +2,7 @@
 
 import { Check, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { sortedByTime } from "./slot-order";
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import { apiRequest } from "@/lib/http/api-client";
@@ -18,11 +19,18 @@ export interface SettingsSlotsCardProps {
 }
 
 export function SettingsSlotsCard({ slots, isAdmin, reload }: SettingsSlotsCardProps) {
+  // The time each row had when its field last lost focus: unsaved edits move a row only then.
+  const [committed, setCommitted] = useState<Record<string, string>>({});
+  const ordered = sortedByTime(slots, (slot) => committed[slot.id] ?? slot.time);
+  const reloadAndReset = async () => {
+    setCommitted({});
+    await reload();
+  };
   if (!isAdmin) {
     return (
       <Card title="Meal slots">
         <ul className="flex flex-col gap-1">
-          {slots.map((slot) => (
+          {ordered.map((slot) => (
             <li key={slot.id} className="flex justify-between gap-4">
               <span>{slot.name}</span>
               <span>{slot.time}</span>
@@ -34,16 +42,21 @@ export function SettingsSlotsCard({ slots, isAdmin, reload }: SettingsSlotsCardP
   }
   return (
     <Card title="Meal slots">
-      {slots.map((slot) => (
+      {ordered.map((slot) => (
         // The key includes the saved values, so a saved row starts again from what the server holds.
-        <ExistingSlot key={`${slot.id}:${slot.name}:${slot.time}`} slot={slot} reload={reload} />
+        <ExistingSlot
+          key={`${slot.id}:${slot.name}:${slot.time}`}
+          slot={slot}
+          reload={reloadAndReset}
+          onTimeCommit={(time) => setCommitted((current) => ({ ...current, [slot.id]: time }))}
+        />
       ))}
-      <NewSlot reload={reload} />
+      <NewSlot reload={reloadAndReset} />
     </Card>
   );
 }
 
-function ExistingSlot({ slot, reload }: { slot: MealSlot; reload: () => Promise<void> }) {
+function ExistingSlot({ slot, reload, onTimeCommit }: { slot: MealSlot; reload: () => Promise<void>; onTimeCommit: (time: string) => void }) {
   const [name, setName] = useState(slot.name);
   const [time, setTime] = useState(slot.time);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -82,6 +95,7 @@ function ExistingSlot({ slot, reload }: { slot: MealSlot; reload: () => Promise<
       time={time}
       onNameChange={edit(setName)}
       onTimeChange={edit(setTime)}
+      onTimeCommit={onTimeCommit}
       disabled={saving.busy || removing.busy}
       errors={{
         name: errors.name ?? failure?.fields.name,

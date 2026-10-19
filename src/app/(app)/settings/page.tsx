@@ -14,15 +14,16 @@ export default async function SettingsPage() {
         <Card title="Appearance">
           <AppearanceSettings />
         </Card>
-        <Card title="Household">
-          <Link
-            href="/settings/household"
-            className="flex min-h-11 items-center justify-between gap-2 rounded-md border-[1.5px] border-ink px-3 active:bg-ink/15"
-          >
-            Household settings
-            <ChevronRight size={20} aria-hidden="true" />
-          </Link>
-        </Card>
+        <Link
+          href="/settings/household"
+          className="flex items-center justify-between gap-4 rounded-lg border-[1.5px] border-ink p-4 transition-transform duration-100 active:scale-[0.99] active:bg-ink/15 md:p-6 motion-reduce:transition-none"
+        >
+          <span className="flex flex-col gap-1">
+            <span className="text-xl font-semibold">Household</span>
+            <span className="text-ink/75">Name, meal slots, shopping trips and members</span>
+          </span>
+          <ChevronRight size={24} aria-hidden="true" />
+        </Link>
         <Card title="Account" actions={<SignOutButton />}>
           <p>
             <span className="font-medium">Email: </span>

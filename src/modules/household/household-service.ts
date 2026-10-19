@@ -52,7 +52,7 @@ export async function createHousehold(userId: string, input: Onboarding): Promis
         });
         const member = await memberRepository.insert(
           household.id,
-          { ...person, dateOfBirth: null, kcalTarget: null, proteinTargetG: null, isAdmin, userId: accountId },
+          { ageBand: null, dateOfBirth: null, kcalTarget: null, proteinTargetG: null, ...person, isAdmin, userId: accountId },
           tx,
         );
         await memberRepository.setSlots(household.id, member.id, slotIds, tx);

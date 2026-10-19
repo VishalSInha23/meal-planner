@@ -8,6 +8,7 @@ import {
   firstStepWithErrors,
   initialState,
   removeSlot,
+  sortSlots,
   stepOfField,
   validateOnboarding,
   type OnboardingState,
@@ -17,7 +18,7 @@ function filled(): OnboardingState {
   const state = initialState("Asha Rao", "Europe/London");
   return {
     ...state,
-    you: { ...state.you, sex: "female", ageBand: "36-40" },
+    you: { ...state.you, sex: "female", dateOfBirth: "1988-04-23" },
     household: { ...state.household, name: "Rao home" },
   };
 }
@@ -50,7 +51,7 @@ describe("buildPayload", () => {
       trips: [{ key: "t", dayOfWeek: 6, time: "10:00" }],
     };
     expect(buildPayload(state)).toEqual({
-      you: { name: "Asha Rao", sex: "female", ageBand: "36-40", slotPositions: [0, 2] },
+      you: { name: "Asha Rao", sex: "female", dateOfBirth: "1988-04-23", slotPositions: [0, 2] },
       household: { name: "Rao home", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" },
       mealSlots: [
         { name: "Breakfast", time: "08:00" },
@@ -90,6 +91,34 @@ describe("addSlot and removeSlot", () => {
   });
 });
 
+describe("sortSlots", () => {
+  it("puts a new slot in time order and keeps every tick on its slot", () => {
+    let state = addPerson(filled());
+    const [breakfast, lunch, dinner] = state.slots;
+    state = {
+      ...state,
+      you: { ...state.you, slotIds: [dinner!.key, breakfast!.key] },
+      members: [{ ...state.members[0]!, name: "Kabir", sex: "male", ageBand: "6-10", slotIds: [lunch!.key, dinner!.key] }],
+    };
+    state = addSlot(state);
+    const tea = state.slots[3]!;
+    state = { ...state, slots: state.slots.map((slot) => (slot.key === tea.key ? { ...slot, name: "Tea time", time: "16:00" } : slot)) };
+    state = { ...state, you: { ...state.you, slotIds: state.you.slotIds.filter((id) => id !== tea.key) } };
+
+    const sorted = sortSlots(state);
+    expect(sorted.slots.map((slot) => slot.name)).toEqual(["Breakfast", "Lunch", "Tea time", "Dinner"]);
+    expect(sorted.you.slotIds).toEqual([dinner!.key, breakfast!.key]);
+    const payload = buildPayload(state) as { you: { slotPositions: number[] }; members: { slotPositions: number[] }[] };
+    expect(payload.you.slotPositions).toEqual([0, 3]);
+    expect(payload.members[0]!.slotPositions).toEqual([1, 2, 3]);
+  });
+
+  it("leaves a slot without a time last", () => {
+    const state = addSlot(filled());
+    expect(sortSlots(state).slots.at(-1)!.time).toBe("");
+  });
+});
+
 describe("validateOnboarding", () => {
   it("accepts a household with no other members and trims names", () => {
     const state = filled();
@@ -106,7 +135,7 @@ describe("validateOnboarding", () => {
       fields: {
         "you.name": "Give the member a name",
         "you.sex": "Pick male or female",
-        "you.ageBand": "Pick an age band",
+        "you.dateOfBirth": "Use a date like 1990-04-23",
         "household.name": "Give the household a name",
         "mealSlots.2.time": "Another slot has this time",
         "members.0.name": "Give the member a name",
@@ -136,7 +165,7 @@ describe("validateOnboarding", () => {
 describe("steps", () => {
   it("places each field on the step that shows it", () => {
     expect(stepOfField("you.name")).toBe(1);
-    expect(stepOfField("you.ageBand")).toBe(1);
+    expect(stepOfField("you.dateOfBirth")).toBe(1);
     expect(stepOfField("you.slotPositions")).toBe(2);
     expect(stepOfField("household.timezone")).toBe(2);
     expect(stepOfField("mealSlots")).toBe(2);

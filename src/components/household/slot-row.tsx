@@ -7,6 +7,8 @@ export interface SlotRowProps {
   time: string;
   onNameChange: (name: string) => void;
   onTimeChange: (time: string) => void;
+  // Called when the time field loses focus: the moment a row may move to its place.
+  onTimeCommit?: (time: string) => void;
   errors?: { name?: string; time?: string; row?: string };
   disabled?: boolean;
   // Icon buttons shown at the end of the row.
@@ -14,7 +16,7 @@ export interface SlotRowProps {
 }
 
 // A meal slot's name and time, used by onboarding and by the household settings.
-export function SlotRow({ name, time, onNameChange, onTimeChange, errors = {}, disabled, actions }: SlotRowProps) {
+export function SlotRow({ name, time, onNameChange, onTimeChange, onTimeCommit, errors = {}, disabled, actions }: SlotRowProps) {
   const rowErrorId = useId();
   return (
     <div className="flex flex-col gap-1">
@@ -34,6 +36,7 @@ export function SlotRow({ name, time, onNameChange, onTimeChange, errors = {}, d
           type="time"
           value={time}
           onChange={(event) => onTimeChange(event.target.value)}
+          onBlur={(event) => onTimeCommit?.(event.target.value)}
           error={errors.time}
           disabled={disabled}
         />

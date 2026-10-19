@@ -21,8 +21,8 @@ interface PartProps {
   disabled?: boolean;
 }
 
-// Name, sex and age band: the fields onboarding asks for.
-export function MemberBasicsFields({ draft, onChange, errors = {}, disabled }: PartProps) {
+// Name, sex and age band: the fields onboarding asks for. For your own entry (`self`) it asks the date of birth instead.
+export function MemberBasicsFields({ draft, onChange, errors = {}, disabled, self }: PartProps & { self?: boolean }) {
   return (
     <>
       <TextField
@@ -41,15 +41,26 @@ export function MemberBasicsFields({ draft, onChange, errors = {}, disabled }: P
         error={errors.sex}
         disabled={disabled}
       />
-      <Select
-        label="Age band"
-        options={AGE_BAND_OPTIONS}
-        value={draft.ageBand || undefined}
-        onValueChange={(value) => onChange({ ...draft, ageBand: value })}
-        placeholder="Pick an age band"
-        error={errors.ageBand}
-        disabled={disabled}
-      />
+      {self ? (
+        <TextField
+          label="Date of birth"
+          type="date"
+          value={draft.dateOfBirth}
+          onChange={(event) => onChange({ ...draft, dateOfBirth: event.target.value })}
+          error={errors.dateOfBirth}
+          disabled={disabled}
+        />
+      ) : (
+        <Select
+          label="Age band"
+          options={AGE_BAND_OPTIONS}
+          value={draft.ageBand || undefined}
+          onValueChange={(value) => onChange({ ...draft, ageBand: value })}
+          placeholder="Pick an age band"
+          error={errors.ageBand}
+          disabled={disabled}
+        />
+      )}
     </>
   );
 }

@@ -11,11 +11,10 @@ export const SEX_OPTIONS = [
   { value: "female", label: "Female" },
 ];
 
-// The browser's IANA timezone names, with UTC and the given zone always present.
-export function timezoneNames(current?: string): string[] {
+// The browser's IANA timezone names, with UTC always present.
+export function timezoneNames(): string[] {
   const names = new Set<string>(["UTC"]);
   const supported = (Intl as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
   for (const name of supported?.("timeZone") ?? []) names.add(name);
-  if (current) names.add(current);
   return [...names].sort((a, b) => a.localeCompare(b));
 }

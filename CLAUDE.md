@@ -74,6 +74,7 @@ drizzle/                generated migrations (committed)
 - Buttons show an icon (`lucide-react`), not text. Every icon button has an `aria-label` and a matching `title` tooltip; when a task names a button ("Add dish"), that name is its label. Text stays only where an icon alone can't say it: the sign-in button and the final confirmation of a destructive action.
 - Theme: light or dark only, no "system" option. Until someone picks one, the page follows the device setting.
 - Layout: dashboard style. Navigation is a menu on the left: a fixed sidebar on wide screens (768 px and up), and on phones a drawer that slides in from the left, opened by a menu icon button in the header. Content is grouped in cards (`Card` from `src/components/ui/card.tsx`: 1.5 px ink border, rounded corners, padding, no shadow), laid out in a grid that becomes one column on phones.
+- No card that holds only a single button or link: the button or link itself becomes the card (whole card clickable, title, one line of description, chevron).
 - Accessible: every input labelled, focus visible, everything works by keyboard.
 
 ## Tests

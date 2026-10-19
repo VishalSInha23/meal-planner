@@ -37,7 +37,7 @@ describe("createHousehold", () => {
     const [breakfast, dinner] = overview.mealSlots;
     const asha = overview.members.find((item) => item.name === "Asha");
     const ravi = overview.members.find((item) => item.name === "Ravi");
-    expect(asha).toMatchObject({ userId: "user-1", isAdmin: true, ageBand: "36-40", dateOfBirth: null });
+    expect(asha).toMatchObject({ userId: "user-1", isAdmin: true, ageBand: null, dateOfBirth: "1988-04-23" });
     expect(asha?.slotIds.toSorted()).toEqual([breakfast.id, dinner.id].toSorted());
     expect(ravi).toMatchObject({ userId: null, isAdmin: false });
     expect(ravi?.slotIds).toEqual([dinner.id]);

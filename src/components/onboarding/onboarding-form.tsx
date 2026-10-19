@@ -14,6 +14,7 @@ import {
   initialState,
   newKey,
   removeSlot,
+  sortSlots,
   validateOnboarding,
   type OnboardingState,
   type Step,
@@ -62,7 +63,10 @@ export function OnboardingForm({ userName }: { userName: string }) {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const result = validateOnboarding(state);
+    // Enter in a time field submits without a blur, so put the slots in order here too.
+    const sorted = sortSlots(state);
+    setState(sorted);
+    const result = validateOnboarding(sorted);
     if (step < 3) {
       const here = result.ok ? {} : fieldsOfStep(result.fields, step);
       setErrors(here);
@@ -104,7 +108,7 @@ export function OnboardingForm({ userName }: { userName: string }) {
 
       {step === 1 && (
         <Card>
-          <MemberBasicsFields draft={state.you} onChange={(you) => edit((s) => ({ ...s, you: { ...s.you, ...you } }))} errors={youErrors} />
+          <MemberBasicsFields self draft={state.you} onChange={(you) => edit((s) => ({ ...s, you: { ...s.you, ...you } }))} errors={youErrors} />
         </Card>
       )}
 
@@ -156,6 +160,7 @@ export function OnboardingForm({ userName }: { userName: string }) {
                   time={slot.time}
                   onNameChange={(name) => edit((s) => ({ ...s, slots: s.slots.map((item) => (item.key === slot.key ? { ...item, name } : item)) }))}
                   onTimeChange={(time) => edit((s) => ({ ...s, slots: s.slots.map((item) => (item.key === slot.key ? { ...item, time } : item)) }))}
+                  onTimeCommit={() => setState(sortSlots)}
                   errors={{ name: errors[`mealSlots.${index}.name`], time: errors[`mealSlots.${index}.time`] }}
                   actions={
                     <IconButton label="Remove meal slot" disabled={state.slots.length === 1} onClick={() => edit((s) => removeSlot(s, slot.key))}>

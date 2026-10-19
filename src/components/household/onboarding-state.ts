@@ -1,5 +1,6 @@
 import { fromZodError } from "@/lib/http/errors";
 import { onboardingSchema, type Onboarding } from "@/modules/household/household-schema";
+import { sortedByTime } from "./slot-order";
 import { emptyMemberDraft, type FieldErrors, type MemberDraft } from "./member-draft";
 
 export type Step = 1 | 2 | 3;
@@ -63,6 +64,11 @@ export function addSlot(state: OnboardingState): OnboardingState {
   };
 }
 
+// Slots in time order. People tick slots by key, so ticks stay on the right slots when the rows move.
+export function sortSlots(state: OnboardingState): OnboardingState {
+  return { ...state, slots: sortedByTime(state.slots, (slot) => slot.time) };
+}
+
 export function removeSlot(state: OnboardingState, key: string): OnboardingState {
   const without = (person: PersonDraft): PersonDraft => ({ ...person, slotIds: person.slotIds.filter((id) => id !== key) });
   return {
@@ -80,15 +86,17 @@ export function addPerson(state: OnboardingState): OnboardingState {
 
 // The request body for POST /api/household. People name their slots by position in the slot list.
 // Fields are passed as typed (an empty sex stays empty) so the schema reports what is missing.
-export function buildPayload(state: OnboardingState): unknown {
+export function buildPayload(input: OnboardingState): unknown {
+  const state = sortSlots(input);
   const positions = (slotIds: string[]) =>
     slotIds
       .map((id) => state.slots.findIndex((slot) => slot.key === id))
       .filter((position) => position >= 0)
       .sort((a, b) => a - b);
   const person = ({ name, sex, ageBand, slotIds }: PersonDraft) => ({ name, sex, ageBand, slotPositions: positions(slotIds) });
+  const you = ({ name, sex, dateOfBirth, slotIds }: PersonDraft) => ({ name, sex, dateOfBirth, slotPositions: positions(slotIds) });
   return {
-    you: person(state.you),
+    you: you(state.you),
     household: state.household,
     mealSlots: state.slots.map(({ name, time }) => ({ name, time })),
     shoppingTrips: state.trips.map(({ dayOfWeek, time }) => ({ dayOfWeek, time })),
@@ -107,7 +115,7 @@ export function validateOnboarding(state: OnboardingState): OnboardingValidation
 // The step that shows a field, for both zod paths and the API's `fields` (they use the same dotted names).
 export function stepOfField(name: string): Step {
   if (name === "members" || name.startsWith("members.")) return 3;
-  if (name === "you.name" || name === "you.sex" || name === "you.ageBand") return 1;
+  if (name === "you.name" || name === "you.sex" || name === "you.dateOfBirth") return 1;
   return 2;
 }
 

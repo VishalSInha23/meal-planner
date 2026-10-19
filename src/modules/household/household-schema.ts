@@ -2,7 +2,15 @@ import { z } from "zod";
 import { timeOfDaySchema } from "@/lib/time-of-day";
 import { mealSlotListSchema } from "../meal-slot/meal-slot-schema.ts";
 import { shoppingTripListSchema } from "../shopping-trip/shopping-trip-schema.ts";
-import { ageBandSchema, memberNameSchema, sexSchema, type MemberWithSlots } from "../member/member-schema.ts";
+import { todayInTimezone } from "@/lib/dates";
+import {
+  ageBandSchema,
+  dateOfBirthProblem,
+  dateOfBirthSchema,
+  memberNameSchema,
+  sexSchema,
+  type MemberWithSlots,
+} from "../member/member-schema.ts";
 import type { MealSlot } from "../meal-slot/meal-slot-schema.ts";
 import type { ShoppingTrip } from "../shopping-trip/shopping-trip-schema.ts";
 
@@ -39,13 +47,18 @@ export const updateHouseholdSchema = z
 // Members in onboarding name their slots by position in the submitted slot list.
 const slotPositionsSchema = z.array(z.number().int().min(0)).min(1, "Pick at least one meal slot");
 
+// The signed-in person gives a date of birth; members added by them give an age band.
+const onboardingYouSchema = z
+  .object({ name: memberNameSchema, sex: sexSchema, dateOfBirth: dateOfBirthSchema, slotPositions: slotPositionsSchema })
+  .strict();
+
 const onboardingMemberSchema = z
   .object({ name: memberNameSchema, sex: sexSchema, ageBand: ageBandSchema, slotPositions: slotPositionsSchema })
   .strict();
 
 export const onboardingSchema = z
   .object({
-    you: onboardingMemberSchema,
+    you: onboardingYouSchema,
     household: z
       .object({
         name: householdNameSchema,
@@ -71,6 +84,11 @@ export const onboardingSchema = z
       }
     };
     check(input.you.slotPositions, ["you"]);
+    // The range check needs the household's today; a bad timezone is reported on its own field.
+    if (isIanaTimezone(input.household.timezone) && dateOfBirthSchema.safeParse(input.you.dateOfBirth).success) {
+      const problem = dateOfBirthProblem(input.you.dateOfBirth, todayInTimezone(input.household.timezone));
+      if (problem) context.addIssue({ code: "custom", path: ["you", "dateOfBirth"], message: problem });
+    }
     input.members.forEach((member, index) => check(member.slotPositions, ["members", index]));
   });
 

@@ -55,7 +55,7 @@ export async function addAccountMember(householdId: string, slotIds: string[], u
 
 export function validOnboarding(overrides: Partial<Onboarding> = {}): Onboarding {
   return {
-    you: { name: "Asha", sex: "female", ageBand: "36-40", slotPositions: [0, 1] },
+    you: { name: "Asha", sex: "female", dateOfBirth: "1988-04-23", slotPositions: [0, 1] },
     household: { name: "Home", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" },
     mealSlots: [
       { name: "Breakfast", time: "08:00" },

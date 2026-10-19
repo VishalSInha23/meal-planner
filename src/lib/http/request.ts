@@ -12,3 +12,8 @@ export async function idParam(params: Promise<{ id: string }>): Promise<string> 
   if (!parsed.success) throw notFound();
   return parsed.data;
 }
+
+// Parses the query string with a zod schema. A bad value fails validation like a bad body.
+export function parseQuery<S extends z.ZodType>(request: Request, schema: S): z.output<S> {
+  return schema.parse(Object.fromEntries(new URL(request.url).searchParams));
+}
