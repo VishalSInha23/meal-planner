@@ -108,6 +108,21 @@ describe("/api/join-requests", () => {
       expect(await attempts()).toBe(10);
     });
 
+    it("holds the limit of 10 wrong codes under 20 parallel asks, without slowing another account", async () => {
+      await createHouseholdFixture("a");
+      const responses = await Promise.all(Array.from({ length: 20 }, () => ask({ code: "ZZZZZZZZ", you })));
+      const codes = await Promise.all(responses.map(async (response) => [response.status, (await errorOf(response)).code]));
+      expect(codes.filter(([status, code]) => status === 404 && code === "unknown_code")).toHaveLength(10);
+      expect(codes.filter(([status, code]) => status === 429 && code === "too_many_attempts")).toHaveLength(10);
+      expect(await attempts()).toBe(10);
+
+      await createUser("other");
+      signInAs("other");
+      const other = await ask({ code: "ZZZZZZZZ", you });
+      expect(other.status).toBe(404);
+      expect(await attempts()).toBe(11);
+    });
+
     it("answers 409 request_pending for a second request, also to another household", async () => {
       const first = await createHouseholdFixture("a");
       const second = await createHouseholdFixture("b");

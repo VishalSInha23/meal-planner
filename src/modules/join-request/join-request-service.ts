@@ -1,6 +1,7 @@
 import { uniqueViolation } from "@/db/errors";
+import { withTransaction } from "@/db/transaction";
 import { AppError, badRequest, notFound } from "@/lib/http/errors";
-import { assertCanAttempt, recordWrongCode } from "../join-attempt/join-attempt-service.ts";
+import { assertCanAttempt, lockAccount, recordWrongCode } from "../join-attempt/join-attempt-service.ts";
 import { checkCanLeave, findHouseholdByJoinCode } from "../household/household-service.ts";
 import { isJoinCodeFormat, normalizeJoinCode } from "../household/join-code.ts";
 import * as memberRepository from "../member/member-repository.ts";
@@ -13,14 +14,17 @@ const requestPending = () => new AppError(409, "request_pending", "You already h
 
 // Asks to join the household with the code. See docs/spec/08-joining.md (Asking to join).
 export async function createJoinRequest(userId: string, input: CreateJoinRequest): Promise<MyJoinRequest> {
-  await assertCanAttempt(userId);
-
   const code = normalizeJoinCode(input.code);
-  const target = isJoinCodeFormat(code) ? await findHouseholdByJoinCode(code) : null;
-  if (!target) {
-    await recordWrongCode(userId);
-    throw new AppError(404, "unknown_code", "No household has this code");
-  }
+  // The wrong code is recorded in the same transaction as the check, which locks the account first. The transaction
+  // returns instead of throwing for a wrong code, so the record is committed.
+  const target = await withTransaction(async (tx) => {
+    await lockAccount(userId, tx);
+    await assertCanAttempt(userId, new Date(), tx);
+    const found = isJoinCodeFormat(code) ? await findHouseholdByJoinCode(code, tx) : null;
+    if (!found) await recordWrongCode(userId, new Date(), tx);
+    return found;
+  });
+  if (!target) throw new AppError(404, "unknown_code", "No household has this code");
 
   const current = await memberRepository.findByUserId(userId);
   if (current?.householdId === target.id) throw new AppError(409, "already_in_household", "You're already in this household");

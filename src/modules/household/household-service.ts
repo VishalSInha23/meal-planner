@@ -36,8 +36,8 @@ export async function regenerateJoinCode(householdId: string): Promise<string> {
   });
 }
 
-export function findHouseholdByJoinCode(joinCode: string): Promise<Household | null> {
-  return repository.findByJoinCode(joinCode);
+export function findHouseholdByJoinCode(joinCode: string, db?: DbOrTx): Promise<Household | null> {
+  return repository.findByJoinCode(joinCode, db);
 }
 
 // Whether the account can leave its household, by the rules in docs/spec/08-joining.md (Leaving and removing).
