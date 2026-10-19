@@ -1,12 +1,8 @@
-import { Card } from "@/components/ui/card";
+import { redirect } from "next/navigation";
+import { requireMember } from "@/lib/auth/session";
+import { defaultPlannerWeek } from "@/lib/time/week";
 
-export default function PlanPage() {
-  return (
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Plan</h1>
-      <Card>
-        <p>Coming soon</p>
-      </Card>
-    </div>
-  );
+export default async function PlanPage() {
+  const { household } = await requireMember();
+  redirect(`/plan/${defaultPlannerWeek(new Date(), household.timezone, household.weekStartDay)}`);
 }
