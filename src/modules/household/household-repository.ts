@@ -1,7 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { household } from "@/db/schema";
-import type { DbOrTx } from "@/db/transaction";
+import type { DbOrTx, Tx } from "@/db/transaction";
+import * as dishRepository from "../dish/dish-repository.ts";
+import * as mealRepository from "../meal/meal-repository.ts";
 import type { Household, UpdateHousehold } from "./household-schema.ts";
 
 type Row = typeof household.$inferSelect;
@@ -45,8 +47,12 @@ export async function findByJoinCode(joinCode: string, db: DbOrTx = getDb()): Pr
   return row ? toHousehold(row) : null;
 }
 
-// Deletes the household with everything in it. Returns false when there is no such household.
-export async function remove(householdId: string, db: DbOrTx = getDb()): Promise<boolean> {
-  const rows = await db.delete(household).where(eq(household.id, householdId)).returning({ id: household.id });
+// Deletes the household with everything in it. Returns false when there is no such household. The db refuses to delete
+// a slot that meals use or an ingredient that dishes use, so the meals and the ingredient links go first.
+// It takes a transaction, so the three deletes always succeed or fail together.
+export async function remove(householdId: string, tx: Tx): Promise<boolean> {
+  await mealRepository.removeAllMeals(householdId, tx);
+  await dishRepository.removeAllDishIngredients(householdId, tx);
+  const rows = await tx.delete(household).where(eq(household.id, householdId)).returning({ id: household.id });
   return rows.length > 0;
 }
