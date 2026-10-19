@@ -75,14 +75,18 @@ export interface ChangeFailure {
   message: string;
 }
 
-// What to show for a failed change, and whether the week should be refreshed because someone else changed it.
+// What to show for a failed change, whether the week should be refreshed because someone else changed it,
+// and whether the person should choose between their change and the other one (`conflict`).
 // "add" is adding a dish to the meal; "dish" is changing or removing a dish already in it.
-export function changeFailure(failure: ChangeFailure, target: "add" | "dish"): { message: string; refresh: boolean } {
+export function changeFailure(failure: ChangeFailure, target: "add" | "dish"): { message: string; refresh: boolean; conflict: boolean } {
   if (target === "add" && failure.status === 409 && failure.code === "dish_already_in_meal") {
-    return { message: "Already in this meal", refresh: true };
+    return { message: "Already in this meal", refresh: true, conflict: false };
+  }
+  if (target === "dish" && failure.status === 409 && failure.code === "meal_dish_changed") {
+    return { message: "Someone else changed this just now", refresh: true, conflict: true };
   }
   if (target === "dish" && failure.status === 404) {
-    return { message: "This was just changed by someone else", refresh: true };
+    return { message: "This was just changed by someone else", refresh: true, conflict: false };
   }
-  return { message: failure.message, refresh: false };
+  return { message: failure.message, refresh: false, conflict: false };
 }

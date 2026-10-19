@@ -12,7 +12,24 @@ export const addMealDishSchema = z.union([
   z.object({ date: dateSchema, mealSlotId: z.uuid(), dishName: dishNameSchema }).strict(),
 ]);
 
-export const setMealDishMemberSchema = z.object({ eats: z.boolean() }).strict();
+const versionSchema = z.number().int().min(1);
+
+export const setMealDishMemberSchema = z.object({ eats: z.boolean(), version: versionSchema }).strict();
+
+// The version arrives as text in the query string.
+export const removeMealDishQuerySchema = z.object({
+  version: z
+    .string()
+    .regex(/^[1-9]\d{0,8}$/, "Use a version number")
+    .transform(Number),
+});
+
+// What a tick answers: the dish with the version the client now holds.
+export interface MealDishChange {
+  id: string;
+  version: number;
+  memberIds: string[];
+}
 
 export type AddMealDish = z.infer<typeof addMealDishSchema>;
 
@@ -20,6 +37,8 @@ export type AddMealDish = z.infer<typeof addMealDishSchema>;
 export interface MealDish {
   // The meal_dish id.
   id: string;
+  // Goes up by 1 each time who eats the dish changes.
+  version: number;
   dishId: string;
   name: string;
   kcalPerServing: number | null;

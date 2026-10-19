@@ -11,7 +11,7 @@ import * as weekPlanRepository from "../week-plan/week-plan-repository.ts";
 import { assertWeekStart } from "../week-plan/week-plan-service.ts";
 import * as repository from "./meal-repository.ts";
 import { computeNutrition } from "./meal-nutrition.ts";
-import type { AddMealDish, Meal, MealDishRow, Week } from "./meal-schema.ts";
+import type { AddMealDish, Meal, MealDishChange, MealDishRow, Week } from "./meal-schema.ts";
 
 export async function getWeek(householdId: string, weekStart: string): Promise<Week> {
   const household = await householdRepository.findById(householdId);
@@ -75,26 +75,42 @@ export async function addDishToMeal(householdId: string, input: AddMealDish): Pr
   }
 }
 
+const dishChanged = () => new AppError(409, "meal_dish_changed", "Someone else changed this dish just now");
+
 // Idempotent. The member can be any member of the household.
-export async function setMealDishMember(householdId: string, mealDishId: string, memberId: string, eats: boolean): Promise<void> {
-  await withTransaction(async (tx) => {
+// Refused with 409 when the dish changed since the client saw `version`. The version goes up only when something changed.
+export async function setMealDishMember(
+  householdId: string,
+  mealDishId: string,
+  memberId: string,
+  eats: boolean,
+  version: number,
+): Promise<MealDishChange> {
+  return withTransaction(async (tx) => {
+    const locked = await repository.lockMealDish(householdId, mealDishId, tx);
+    if (!locked) throw notFound("Dish in meal not found");
+    if (!(await memberRepository.findInHousehold(householdId, memberId, tx))) throw notFound("Member not found");
+    if (locked.version !== version) throw dishChanged();
+    const changed = eats ? await repository.tickMembers(mealDishId, [memberId], tx) : await repository.untickMember(mealDishId, memberId, tx);
+    if (changed > 0) {
+      await repository.bumpVersion(mealDishId, tx);
+      await repository.touchMeal(locked.mealId, tx);
+    }
     const found = await repository.findMealDish(householdId, mealDishId, tx);
     if (!found) throw notFound("Dish in meal not found");
-    if (!(await memberRepository.findInHousehold(householdId, memberId, tx))) throw notFound("Member not found");
-    if (eats) await repository.tickMembers(mealDishId, [memberId], tx);
-    else await repository.untickMember(mealDishId, memberId, tx);
-    await repository.touchMeal(found.mealId, tx);
+    return { id: found.id, version: found.version, memberIds: found.memberIds };
   });
 }
 
-// The meal goes too when it was the last dish.
-export async function removeMealDish(householdId: string, mealDishId: string): Promise<void> {
+// The meal goes too when it was the last dish. Refused with 409 when the dish changed since the client saw `version`.
+export async function removeMealDish(householdId: string, mealDishId: string, version: number): Promise<void> {
   await withTransaction(async (tx) => {
-    const found = await repository.findMealDish(householdId, mealDishId, tx);
-    if (!found) throw notFound("Dish in meal not found");
-    await repository.lockMeal(householdId, found.mealId, tx);
+    const locked = await repository.lockMealDish(householdId, mealDishId, tx);
+    if (!locked) throw notFound("Dish in meal not found");
+    if (locked.version !== version) throw dishChanged();
+    await repository.lockMeal(householdId, locked.mealId, tx);
     await repository.removeMealDish(mealDishId, tx);
-    if ((await repository.countMealDishes(found.mealId, tx)) === 0) await repository.removeMeal(householdId, found.mealId, tx);
-    else await repository.touchMeal(found.mealId, tx);
+    if ((await repository.countMealDishes(locked.mealId, tx)) === 0) await repository.removeMeal(householdId, locked.mealId, tx);
+    else await repository.touchMeal(locked.mealId, tx);
   });
 }

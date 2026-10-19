@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Check, Plus, Search, Trash2, X } from "lucide-react";
 import { useId, useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -8,8 +8,9 @@ import { FieldError, controlBorder } from "@/components/ui/field-parts";
 import { IconButton } from "@/components/ui/icon-button";
 import { Spinner } from "@/components/ui/spinner";
 import { apiRequest, type ApiResult } from "@/lib/http/api-client";
-import type { Meal } from "@/modules/meal/meal-schema";
+import type { Meal, MealDish } from "@/modules/meal/meal-schema";
 import type { MealSlot } from "@/modules/meal-slot/meal-slot-schema";
+import { createDishChangeQueue } from "./dish-change-queue";
 import { changeFailure, longDay } from "./plan-format";
 import { useDishSearch } from "./use-dish-search";
 import { useReloadAfterChange } from "./use-week";
@@ -31,7 +32,21 @@ export interface MealDialogProps {
 
 const ADD_KEY = "add";
 
+// Sends one change to a dish with the version the dish must still have.
+type DishChange = (version: number) => Promise<ApiResult<{ version: number } | undefined>>;
+
+// A change that was refused because someone else changed the dish first, kept so the person can apply it anyway.
+interface Conflict {
+  key: string;
+  message: string;
+  send: DishChange;
+}
+
 function withoutKey(record: Readonly<Record<string, string>>, key: string): Record<string, string> {
+  return Object.fromEntries(Object.entries(record).filter(([name]) => name !== key));
+}
+
+function withoutConflict(record: Readonly<Record<string, Conflict>>, key: string): Record<string, Conflict> {
   return Object.fromEntries(Object.entries(record).filter(([name]) => name !== key));
 }
 
@@ -41,6 +56,8 @@ export function MealDialog({ date, slot, meal, members, reload, onClose }: MealD
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
+  const [conflicts, setConflicts] = useState<Readonly<Record<string, Conflict>>>({});
+  const [queue] = useState(createDishChangeQueue);
   const search = useDishSearch(text, version);
   const { pending, reloadNow } = useReloadAfterChange(reload);
   const typed = text.trim();
@@ -49,9 +66,16 @@ export function MealDialog({ date, slot, meal, members, reload, onClose }: MealD
   const locked = pending;
 
   // Runs one change. The control behind the key shows a spinner meanwhile, and the failure is shown under the key's row.
-  async function change(key: string, errorKey: string, target: "add" | "dish", request: () => Promise<ApiResult<unknown>>): Promise<boolean> {
+  async function change(
+    key: string,
+    errorKey: string,
+    target: "add" | "dish",
+    request: () => Promise<ApiResult<unknown>>,
+    onConflict?: (message: string) => void,
+  ): Promise<boolean> {
     setBusy((previous) => new Set(previous).add(key));
     setErrors((previous) => withoutKey(previous, errorKey));
+    setConflicts((previous) => withoutConflict(previous, errorKey));
     const result = await request();
     setBusy((previous) => {
       const next = new Set(previous);
@@ -63,9 +87,28 @@ export function MealDialog({ date, slot, meal, members, reload, onClose }: MealD
       return true;
     }
     const failure = changeFailure(result, target);
-    setErrors((previous) => ({ ...previous, [errorKey]: failure.message }));
+    if (failure.conflict && onConflict) onConflict(failure.message);
+    else setErrors((previous) => ({ ...previous, [errorKey]: failure.message }));
     if (failure.refresh) void reloadNow();
     return false;
+  }
+
+  // Changes to the same dish run one after another, each with the version the one before returned.
+  // The version is the dish's as shown now, so "Apply my change" sends against the other person's version.
+  function changeDish(dish: MealDish, key: string, send: DishChange): Promise<boolean> {
+    return change(
+      key,
+      dish.id,
+      "dish",
+      () =>
+        queue.run(
+          dish.id,
+          dish.version,
+          send,
+          (result) => (result.ok ? (result.data?.version ?? null) : null),
+        ),
+      (message) => setConflicts((previous) => ({ ...previous, [dish.id]: { key, message, send } })),
+    );
   }
 
   async function add(body: { dishId: string } | { dishName: string }) {
@@ -153,7 +196,9 @@ export function MealDialog({ date, slot, meal, members, reload, onClose }: MealD
                       label={`Remove ${dish.name}`}
                       loading={busy.has(`${dish.id}:remove`)}
                       disabled={locked}
-                      onClick={() => void change(`${dish.id}:remove`, dish.id, "dish", () => apiRequest("DELETE", `/api/meal-dishes/${dish.id}`))}
+                      onClick={() =>
+                        void changeDish(dish, `${dish.id}:remove`, (version) => apiRequest("DELETE", `/api/meal-dishes/${dish.id}?version=${version}`))
+                      }
                     >
                       <Trash2 size={20} aria-hidden="true" />
                     </IconButton>
@@ -168,11 +213,30 @@ export function MealDialog({ date, slot, meal, members, reload, onClose }: MealD
                         loading={busy.has(key)}
                         disabled={locked}
                         onCheckedChange={(eats) =>
-                          void change(key, dish.id, "dish", () => apiRequest("PUT", `/api/meal-dishes/${dish.id}/members/${member.id}`, { eats }))
+                          void changeDish(dish, key, (version) =>
+                            apiRequest<{ version: number }>("PUT", `/api/meal-dishes/${dish.id}/members/${member.id}`, { eats, version }),
+                          )
                         }
                       />
                     );
                   })}
+                  {conflicts[dish.id] && (
+                    <div role="group" aria-label={`Someone else changed ${dish.name}`} className="flex items-center justify-between gap-2">
+                      <FieldError id={`${dish.id}-conflict`}>{conflicts[dish.id].message}</FieldError>
+                      <div className="flex gap-2">
+                        <IconButton
+                          label="Apply my change"
+                          disabled={locked}
+                          onClick={() => void changeDish(dish, conflicts[dish.id].key, conflicts[dish.id].send)}
+                        >
+                          <Check size={20} aria-hidden="true" />
+                        </IconButton>
+                        <IconButton label="Keep theirs" disabled={locked} onClick={() => setConflicts((previous) => withoutConflict(previous, dish.id))}>
+                          <X size={20} aria-hidden="true" />
+                        </IconButton>
+                      </div>
+                    </div>
+                  )}
                   {errors[dish.id] && <FieldError id={`${dish.id}-error`}>{errors[dish.id]}</FieldError>}
                 </div>
               </li>

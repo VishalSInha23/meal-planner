@@ -129,7 +129,7 @@ describe("getGroceryLists", () => {
     expect(names(lists.current)).toEqual(["cauliflower", "pasta", "rice"]);
     expect(lists.current.items[2].dishNames).toEqual(["Curry", "Rice"]);
 
-    await removeMealDish(s.householdId, added.id);
+    await removeMealDish(s.householdId, added.id, added.version);
     lists = await getGroceryLists(s.householdId, now);
     expect(names(lists.current)).toEqual(["pasta", "rice"]);
 

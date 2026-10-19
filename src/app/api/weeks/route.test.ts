@@ -36,11 +36,16 @@ const putPlanned = (weekStart: string) =>
 const deletePlanned = (weekStart: string) =>
   unplan(jsonRequest("DELETE", `/api/weeks/${weekStart}/planned`), { params: Promise.resolve({ weekStart }) } as never);
 const addDish = (body: unknown) => postMealDish(jsonRequest("POST", "/api/meal-dishes", body), paramsOf());
-const removeFromMeal = (id: string) => deleteMealDish(jsonRequest("DELETE", `/api/meal-dishes/${id}`), paramsOf(id));
+const removeFromMeal = (id: string, version: number | null) =>
+  deleteMealDish(jsonRequest("DELETE", `/api/meal-dishes/${id}${version === null ? "" : `?version=${version}`}`), paramsOf(id));
 const tick = (id: string, memberId: string, body: unknown) =>
   putMember(jsonRequest("PUT", `/api/meal-dishes/${id}/members/${memberId}`, body), {
     params: Promise.resolve({ id, memberId }),
   } as never);
+const versionOf = async (id: string) => (await getDb().select().from(mealDish).where(eq(mealDish.id, id)))[0]?.version ?? 1;
+// The change as a client that has seen the dish's current version would send it.
+const tickNow = async (id: string, memberId: string, eats: boolean) => tick(id, memberId, { eats, version: await versionOf(id) });
+const removeNow = async (id: string) => removeFromMeal(id, await versionOf(id));
 const removeSlot = (id: string) => deleteSlot(jsonRequest("DELETE", `/api/meal-slots/${id}`), paramsOf(id));
 const removeDish = (id: string) => deleteDish(jsonRequest("DELETE", `/api/dishes/${id}`), paramsOf(id));
 
@@ -114,8 +119,8 @@ describe("/api/weeks and /api/meal-dishes", () => {
     expect((await putPlanned(MONDAY)).status).toBe(401);
     expect((await deletePlanned(MONDAY)).status).toBe(401);
     expect((await addDish({})).status).toBe(401);
-    expect((await removeFromMeal(unknownId())).status).toBe(401);
-    expect((await tick(unknownId(), unknownId(), { eats: true })).status).toBe(401);
+    expect((await removeFromMeal(unknownId(), 1)).status).toBe(401);
+    expect((await tick(unknownId(), unknownId(), { eats: true, version: 1 })).status).toBe(401);
   });
 
   it("gives the current week, and the next one on the planning deadline", async () => {
@@ -186,7 +191,7 @@ describe("/api/weeks and /api/meal-dishes", () => {
         expect((await weekIfNoneMatch(MONDAY, seen[seen.length - 2])).status).toBe(200);
       };
 
-      await tick(added.id, s.sonId, { eats: true });
+      await tickNow(added.id, s.sonId, true);
       await expectNew();
       await getDb().update(dish).set({ name: "Brown rice" }).where(eq(dish.id, s.dishes.rice));
       await expectNew();
@@ -256,18 +261,119 @@ describe("/api/weeks and /api/meal-dishes", () => {
 
     // The son doesn't eat in this slot but can be ticked.
     for (let attempt = 0; attempt < 2; attempt++) {
-      const ticked = await tick(added.id, s.sonId, { eats: true });
+      const ticked = await tickNow(added.id, s.sonId, true);
       expect(ticked.status).toBe(200);
-      expect(await ticked.json()).toEqual({ mealDishId: added.id, memberId: s.sonId, eats: true });
+      expect((await ticked.json()).id).toBe(added.id);
     }
     expect(await getDb().select().from(mealDishMember).where(eq(mealDishMember.memberId, s.sonId))).toHaveLength(1);
 
-    for (let attempt = 0; attempt < 2; attempt++) expect((await tick(added.id, s.adminMemberId, { eats: false })).status).toBe(200);
+    for (let attempt = 0; attempt < 2; attempt++) expect((await tickNow(added.id, s.adminMemberId, false)).status).toBe(200);
     const stored = await getDb().select().from(mealDishMember);
     expect(stored.map((row) => row.memberId).sort()).toEqual([s.plainId, s.sonId].sort());
 
-    expect((await tick(added.id, s.sonId, { eats: "yes" })).status).toBe(400);
-    expect((await tick(added.id, s.sonId, {})).status).toBe(400);
+    expect((await tick(added.id, s.sonId, { eats: "yes", version: 1 })).status).toBe(400);
+    expect((await tick(added.id, s.sonId, { version: 1 })).status).toBe(400);
+  });
+
+  describe("versions", () => {
+    async function oneDish() {
+      const s = await signedIn();
+      const added = await (await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.roti })).json();
+      return { s, added };
+    }
+
+    it("starts at version 1 and shows it in the week", async () => {
+      const { added } = await oneDish();
+      expect(added.version).toBe(1);
+      expect((await (await week(MONDAY)).json()).meals[0].dishes[0].version).toBe(1);
+    });
+
+    it("applies a tick with the current version, adds 1 and returns the dish", async () => {
+      const { s, added } = await oneDish();
+      const response = await tick(added.id, s.sonId, { eats: true, version: 1 });
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.id).toBe(added.id);
+      expect(body.version).toBe(2);
+      expect([...body.memberIds].sort()).toEqual([s.adminMemberId, s.plainId, s.sonId].sort());
+      expect(await versionOf(added.id)).toBe(2);
+    });
+
+    it("refuses a stale version with 409 meal_dish_changed and changes nothing", async () => {
+      const { s, added } = await oneDish();
+      await tick(added.id, s.sonId, { eats: true, version: 1 });
+      const stale = await tick(added.id, s.adminMemberId, { eats: false, version: 1 });
+      expect(stale.status).toBe(409);
+      expect((await stale.json()).error).toEqual({ code: "meal_dish_changed", message: "Someone else changed this dish just now" });
+      expect(await versionOf(added.id)).toBe(2);
+      const ticks = await getDb().select().from(mealDishMember).where(eq(mealDishMember.mealDishId, added.id));
+      expect(ticks.map((row) => row.memberId).sort()).toEqual([s.adminMemberId, s.plainId, s.sonId].sort());
+    });
+
+    it("keeps the version when a tick changes nothing, so a double tap does not conflict with itself", async () => {
+      const { s, added } = await oneDish();
+      expect((await tick(added.id, s.adminMemberId, { eats: true, version: 1 })).status).toBe(200);
+      expect(await versionOf(added.id)).toBe(1);
+      expect((await tick(added.id, s.sonId, { eats: false, version: 1 })).status).toBe(200);
+      expect(await versionOf(added.id)).toBe(1);
+      const changed = await tick(added.id, s.sonId, { eats: true, version: 1 });
+      expect((await changed.json()).version).toBe(2);
+      const again = await tick(added.id, s.sonId, { eats: true, version: 2 });
+      expect(again.status).toBe(200);
+      expect((await again.json()).version).toBe(2);
+    });
+
+    it("lets exactly one of two parallel ticks with the same version succeed", async () => {
+      const { s, added } = await oneDish();
+      const results = await Promise.all([
+        tick(added.id, s.sonId, { eats: true, version: 1 }),
+        tick(added.id, s.adminMemberId, { eats: false, version: 1 }),
+      ]);
+      expect(results.map((response) => response.status).sort()).toEqual([200, 409]);
+      expect(await versionOf(added.id)).toBe(2);
+    });
+
+    it("refuses removing a stale version with 409 and keeps the dish", async () => {
+      const { s, added } = await oneDish();
+      await tick(added.id, s.sonId, { eats: true, version: 1 });
+      const stale = await removeFromMeal(added.id, 1);
+      expect(stale.status).toBe(409);
+      expect((await stale.json()).error.code).toBe("meal_dish_changed");
+      expect(await getDb().select().from(mealDish)).toHaveLength(1);
+      expect((await removeFromMeal(added.id, 2)).status).toBe(204);
+      expect(await getDb().select().from(mealDish)).toHaveLength(0);
+    });
+
+    it("answers 400 for a missing or malformed version", async () => {
+      const { s, added } = await oneDish();
+      for (const body of [{ eats: true }, { eats: true, version: "1" }, { eats: true, version: 0 }, { eats: true, version: 1.5 }]) {
+        expect((await tick(added.id, s.sonId, body)).status, JSON.stringify(body)).toBe(400);
+      }
+      for (const query of ["", "?version=", "?version=abc", "?version=0", "?version=-1", "?version=1.5"]) {
+        const response = await deleteMealDish(jsonRequest("DELETE", `/api/meal-dishes/${added.id}${query}`), paramsOf(added.id));
+        expect(response.status, query).toBe(400);
+      }
+      expect(await getDb().select().from(mealDish)).toHaveLength(1);
+    });
+
+    it("answers 404 for another household's dish whatever the version", async () => {
+      const other = await setup("b");
+      const mine = await signedIn("a");
+      signInAs(other.adminUserId);
+      const theirs = await (await addDish({ date: THURSDAY, mealSlotId: other.lunch, dishId: other.dishes.rice })).json();
+      signInAs(mine.adminUserId);
+      for (const version of [1, 2, 99]) {
+        expect((await tick(theirs.id, mine.sonId, { eats: true, version })).status).toBe(404);
+        expect((await removeFromMeal(theirs.id, version)).status).toBe(404);
+      }
+      expect(await versionOf(theirs.id)).toBe(1);
+    });
+
+    it("needs no version to add a dish", async () => {
+      const s = await signedIn();
+      expect((await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.rice })).status).toBe(201);
+      expect((await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.dal, version: 1 })).status).toBe(400);
+    });
   });
 
   it("answers 404 for ids from another household or unknown ids", async () => {
@@ -278,20 +384,20 @@ describe("/api/weeks and /api/meal-dishes", () => {
     expect((await addDish({ date: THURSDAY, mealSlotId: other.lunch, dishId: s.dishes.rice })).status).toBe(404);
     expect((await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: other.dishes.rice })).status).toBe(404);
     expect((await addDish({ date: THURSDAY, mealSlotId: unknownId(), dishId: s.dishes.rice })).status).toBe(404);
-    expect((await tick(mine.id, other.adminMemberId, { eats: true })).status).toBe(404);
-    expect((await tick(mine.id, unknownId(), { eats: true })).status).toBe(404);
-    expect((await tick(unknownId(), s.sonId, { eats: true })).status).toBe(404);
-    expect((await tick("not-a-uuid", s.sonId, { eats: true })).status).toBe(404);
+    expect((await tick(mine.id, other.adminMemberId, { eats: true, version: 1 })).status).toBe(404);
+    expect((await tick(mine.id, unknownId(), { eats: true, version: 1 })).status).toBe(404);
+    expect((await tick(unknownId(), s.sonId, { eats: true, version: 1 })).status).toBe(404);
+    expect((await tick("not-a-uuid", s.sonId, { eats: true, version: 1 })).status).toBe(404);
     expect(await getDb().select().from(meal)).toHaveLength(1);
 
     // Another household's meal dish.
     signInAs(other.adminUserId);
     const theirs = await (await addDish({ date: THURSDAY, mealSlotId: other.lunch, dishId: other.dishes.rice })).json();
     signInAs(s.adminUserId);
-    expect((await tick(theirs.id, s.sonId, { eats: true })).status).toBe(404);
-    expect((await removeFromMeal(theirs.id)).status).toBe(404);
+    expect((await tick(theirs.id, s.sonId, { eats: true, version: 1 })).status).toBe(404);
+    expect((await removeFromMeal(theirs.id, 1)).status).toBe(404);
     expect(await getDb().select().from(mealDish).where(eq(mealDish.id, theirs.id))).toHaveLength(1);
-    expect((await removeFromMeal(unknownId())).status).toBe(404);
+    expect((await removeFromMeal(unknownId(), 1)).status).toBe(404);
   });
 
   it("removes a dish, and the meal when it was the last dish", async () => {
@@ -299,12 +405,12 @@ describe("/api/weeks and /api/meal-dishes", () => {
     const rice = await (await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.rice })).json();
     const dal = await (await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.dal })).json();
 
-    expect((await removeFromMeal(rice.id)).status).toBe(204);
+    expect((await removeNow(rice.id)).status).toBe(204);
     expect(await getDb().select().from(meal)).toHaveLength(1);
     expect(await getDb().select().from(mealDishMember)).toHaveLength(2);
-    expect((await removeFromMeal(rice.id)).status).toBe(404);
+    expect((await removeNow(rice.id)).status).toBe(404);
 
-    expect((await removeFromMeal(dal.id)).status).toBe(204);
+    expect((await removeNow(dal.id)).status).toBe(204);
     expect(await getDb().select().from(meal)).toHaveLength(0);
     expect(await getDb().select().from(mealDishMember)).toHaveLength(0);
     expect((await (await week(MONDAY)).json()).meals).toEqual([]);
@@ -335,10 +441,10 @@ describe("/api/weeks and /api/meal-dishes", () => {
     const curry = await add(s.dishes.curry);
     const roti = await add(s.dishes.roti);
     // Rice and dal for the parents, cauliflower curry for everyone, roti only for the son.
-    await tick(curry, s.sonId, { eats: true });
-    await tick(roti, s.adminMemberId, { eats: false });
-    await tick(roti, s.plainId, { eats: false });
-    await tick(roti, s.sonId, { eats: true });
+    await tickNow(curry, s.sonId, true);
+    await tickNow(roti, s.adminMemberId, false);
+    await tickNow(roti, s.plainId, false);
+    await tickNow(roti, s.sonId, true);
     expect(rice && dal).toBeTruthy();
 
     const body = await (await week(MONDAY)).json();
@@ -405,7 +511,7 @@ describe("/api/weeks and /api/meal-dishes", () => {
     expect(refused.status).toBe(409);
     expect((await refused.json()).error).toEqual({ code: "slot_in_use", message: "Used by 2 meals" });
 
-    await removeFromMeal((await getDb().select().from(mealDish))[0].id);
+    await removeNow((await getDb().select().from(mealDish))[0].id);
     const one = await removeSlot(s.lunch);
     expect((await one.json()).error.message).toBe("Used by 1 meal");
 

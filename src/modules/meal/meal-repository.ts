@@ -9,6 +9,7 @@ async function readMealDishes(householdId: string, where: SQL | undefined, db: D
   const rows = await db
     .select({
       id: mealDish.id,
+      version: mealDish.version,
       mealId: meal.id,
       date: meal.date,
       mealSlotId: meal.mealSlotId,
@@ -113,16 +114,47 @@ export async function insertMealDish(mealId: string, dishId: string, db: DbOrTx 
   return row.id;
 }
 
-export async function tickMembers(mealDishId: string, memberIds: string[], db: DbOrTx = getDb()): Promise<void> {
-  if (memberIds.length === 0) return;
-  await db
+// Returns how many members were newly ticked; members already ticked are left as they are.
+export async function tickMembers(mealDishId: string, memberIds: string[], db: DbOrTx = getDb()): Promise<number> {
+  if (memberIds.length === 0) return 0;
+  const inserted = await db
     .insert(mealDishMember)
     .values(memberIds.map((memberId) => ({ mealDishId, memberId })))
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ memberId: mealDishMember.memberId });
+  return inserted.length;
 }
 
-export async function untickMember(mealDishId: string, memberId: string, db: DbOrTx = getDb()): Promise<void> {
-  await db.delete(mealDishMember).where(and(eq(mealDishMember.mealDishId, mealDishId), eq(mealDishMember.memberId, memberId)));
+// Returns how many ticks were removed (0 when the member was not ticked).
+export async function untickMember(mealDishId: string, memberId: string, db: DbOrTx = getDb()): Promise<number> {
+  const removed = await db
+    .delete(mealDishMember)
+    .where(and(eq(mealDishMember.mealDishId, mealDishId), eq(mealDishMember.memberId, memberId)))
+    .returning({ memberId: mealDishMember.memberId });
+  return removed.length;
+}
+
+// Locks the household's meal dish row until the transaction ends, so changes to one dish take turns.
+// Returns its current version, or null when the dish is not in the household's meals.
+export async function lockMealDish(
+  householdId: string,
+  mealDishId: string,
+  db: DbOrTx = getDb(),
+): Promise<{ mealId: string; version: number } | null> {
+  const rows = await db
+    .select({ mealId: mealDish.mealId, version: mealDish.version })
+    .from(mealDish)
+    .innerJoin(meal, eq(meal.id, mealDish.mealId))
+    .where(and(eq(meal.householdId, householdId), eq(mealDish.id, mealDishId)))
+    .for("update", { of: mealDish });
+  return rows[0] ?? null;
+}
+
+export async function bumpVersion(mealDishId: string, db: DbOrTx = getDb()): Promise<void> {
+  await db
+    .update(mealDish)
+    .set({ version: sql`${mealDish.version} + 1` })
+    .where(eq(mealDish.id, mealDishId));
 }
 
 export async function touchMeal(mealId: string, db: DbOrTx = getDb()): Promise<void> {
