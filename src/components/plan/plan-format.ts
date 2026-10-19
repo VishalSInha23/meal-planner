@@ -90,3 +90,9 @@ export function changeFailure(failure: ChangeFailure, target: "add" | "dish"): {
   }
   return { message: failure.message, refresh: false, conflict: false };
 }
+
+// What a copy says it did.
+export function copiedLabel(addedDishes: number): string {
+  if (addedDishes === 0) return "Nothing new to copy";
+  return `Added ${addedDishes} ${addedDishes === 1 ? "dish" : "dishes"}`;
+}

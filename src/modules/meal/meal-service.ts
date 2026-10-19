@@ -1,7 +1,8 @@
 import { uniqueViolation } from "@/db/errors";
 import { withTransaction } from "@/db/transaction";
 import { AppError, notFound } from "@/lib/http/errors";
-import { weekDates } from "@/lib/time/week";
+import { isCalendarDate } from "@/lib/dates";
+import { addDaysTo, weekDates } from "@/lib/time/week";
 import { createDish } from "../dish/dish-service.ts";
 import * as dishRepository from "../dish/dish-repository.ts";
 import * as householdRepository from "../household/household-repository.ts";
@@ -11,7 +12,7 @@ import * as weekPlanRepository from "../week-plan/week-plan-repository.ts";
 import { assertWeekStart } from "../week-plan/week-plan-service.ts";
 import * as repository from "./meal-repository.ts";
 import { computeNutrition } from "./meal-nutrition.ts";
-import type { AddMealDish, Meal, MealDishChange, MealDishRow, Week } from "./meal-schema.ts";
+import type { AddMealDish, CopyResult, Meal, MealDishChange, MealDishRow, Week } from "./meal-schema.ts";
 
 export async function getWeek(householdId: string, weekStart: string): Promise<Week> {
   const household = await householdRepository.findById(householdId);
@@ -113,4 +114,64 @@ export async function removeMealDish(householdId: string, mealDishId: string, ve
     if ((await repository.countMealDishes(locked.mealId, tx)) === 0) await repository.removeMeal(householdId, locked.mealId, tx);
     else await repository.touchMeal(locked.mealId, tx);
   });
+}
+
+// Copies the dishes of the `days` days from `fromDate` into the matching meals of the days from `toDate`.
+// A dish already in the target meal is left as it is, ticks included; nothing in the target is removed.
+// Meals and dishes are inserted in date, slot, dish order, so copies at once take turns instead of deadlocking.
+// Returns the number of dishes added.
+export async function copyMeals(householdId: string, fromDate: string, toDate: string, days: number): Promise<number> {
+  return withTransaction(async (tx) => {
+    const source = await repository.listMealDishes(householdId, fromDate, addDaysTo(fromDate, days - 1), tx);
+    const targets = new Map<string, { date: string; mealSlotId: string; dishes: MealDishRow[] }>();
+    for (const row of source) {
+      const offset = Math.round((Date.parse(row.date) - Date.parse(fromDate)) / 86_400_000);
+      const date = addDaysTo(toDate, offset);
+      const key = `${date}|${row.mealSlotId}`;
+      const found = targets.get(key) ?? { date, mealSlotId: row.mealSlotId, dishes: [] };
+      found.dishes.push(row);
+      targets.set(key, found);
+    }
+    const ordered = [...targets.values()].sort((a, b) => a.date.localeCompare(b.date) || a.mealSlotId.localeCompare(b.mealSlotId));
+
+    let added = 0;
+    for (const target of ordered) {
+      const dishes = target.dishes.sort((a, b) => a.dishId.localeCompare(b.dishId));
+      const mealId = await repository.ensureMeal(householdId, target.date, target.mealSlotId, tx);
+      const inserted = await repository.insertMealDishesIfMissing(mealId, dishes.map((row) => row.dishId), tx);
+      const membersOf = new Map(dishes.map((row) => [row.dishId, row.memberIds]));
+      await repository.tickAll(
+        inserted.flatMap(({ id, dishId }) => (membersOf.get(dishId) ?? []).map((memberId) => ({ mealDishId: id, memberId }))),
+        tx,
+      );
+      added += inserted.length;
+    }
+    return added;
+  });
+}
+
+function assertDate(value: string, field: string): void {
+  if (!isCalendarDate(value)) throw new AppError(400, "validation_failed", "Some fields are invalid", { [field]: "Use a date like 2026-10-19" });
+}
+
+// Copies the meals of the week that starts on `fromWeekStart` into the week that starts on `weekStart`.
+export async function copyWeek(householdId: string, weekStart: string, fromWeekStart: string): Promise<CopyResult> {
+  const household = await householdRepository.findById(householdId);
+  if (!household) throw notFound("Household not found");
+  assertWeekStart(weekStart, household.weekStartDay);
+  assertWeekStart(fromWeekStart, household.weekStartDay);
+  if (weekStart === fromWeekStart) {
+    throw new AppError(400, "validation_failed", "Some fields are invalid", { fromWeekStart: "Choose a different week" });
+  }
+  return { addedDishes: await copyMeals(householdId, fromWeekStart, weekStart, 7) };
+}
+
+// Copies the meals of `fromDate` into `date`.
+export async function copyDay(householdId: string, date: string, fromDate: string): Promise<CopyResult> {
+  assertDate(date, "date");
+  assertDate(fromDate, "fromDate");
+  if (date === fromDate) {
+    throw new AppError(400, "validation_failed", "Some fields are invalid", { fromDate: "Choose a different day" });
+  }
+  return { addedDishes: await copyMeals(householdId, fromDate, date, 1) };
 }

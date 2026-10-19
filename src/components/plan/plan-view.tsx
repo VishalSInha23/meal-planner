@@ -47,6 +47,7 @@ export function PlanView({ week: initialWeek, refreshSeconds, today, currentWeek
             members={members}
             nutrition={week.nutrition}
             onOpenSlot={(slotId) => setOpen({ date, slotId })}
+            reload={reload}
           />
         ))}
       </div>

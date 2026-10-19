@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MemberDayNutrition } from "@/modules/meal/meal-nutrition";
-import { changeFailure, longDay, missingNote, nutritionSentence, plannedLabel, shortDay, weekRange, weekTag } from "./plan-format.ts";
+import { changeFailure, copiedLabel, longDay, missingNote, nutritionSentence, plannedLabel, shortDay, weekRange, weekTag } from "./plan-format.ts";
 
 const day: MemberDayNutrition = {
   memberId: "m",
@@ -101,5 +101,13 @@ describe("changeFailure", () => {
       refresh: false,
       conflict: false,
     });
+  });
+});
+
+describe("copiedLabel", () => {
+  it("says what a copy added", () => {
+    expect(copiedLabel(0)).toBe("Nothing new to copy");
+    expect(copiedLabel(1)).toBe("Added 1 dish");
+    expect(copiedLabel(5)).toBe("Added 5 dishes");
   });
 });

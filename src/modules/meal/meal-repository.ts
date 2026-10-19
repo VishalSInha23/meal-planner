@@ -114,6 +114,22 @@ export async function insertMealDish(mealId: string, dishId: string, db: DbOrTx 
   return row.id;
 }
 
+// Adds the dishes to the meal, skipping those already in it. Returns the rows it added, in the order of `dishIds`.
+export async function insertMealDishesIfMissing(mealId: string, dishIds: string[], db: DbOrTx = getDb()): Promise<{ id: string; dishId: string }[]> {
+  if (dishIds.length === 0) return [];
+  return db
+    .insert(mealDish)
+    .values(dishIds.map((dishId) => ({ mealId, dishId })))
+    .onConflictDoNothing()
+    .returning({ id: mealDish.id, dishId: mealDish.dishId });
+}
+
+// Ticks members for dishes, leaving existing ticks as they are.
+export async function tickAll(ticks: { mealDishId: string; memberId: string }[], db: DbOrTx = getDb()): Promise<void> {
+  if (ticks.length === 0) return;
+  await db.insert(mealDishMember).values(ticks).onConflictDoNothing();
+}
+
 // Returns how many members were newly ticked; members already ticked are left as they are.
 export async function tickMembers(mealDishId: string, memberIds: string[], db: DbOrTx = getDb()): Promise<number> {
   if (memberIds.length === 0) return 0;

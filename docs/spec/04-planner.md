@@ -16,6 +16,14 @@
 - A dish can be in a meal only once. Example, Thursday lunch: rice and dal ticked for the parents, cauliflower curry for everyone, roti only for the son.
 - Every change is saved straight away as its own small change; there is no save button. If two people edit at the same time, changes to different dishes are all kept. A change to a dish that someone else changed since you last saw it is refused: the planner shows their change under the dish with "Someone else changed this just now", and you choose to apply yours ("Apply my change") or keep theirs ("Keep theirs"). Quick taps of your own on the same dish never refuse each other. Ticking someone who is already ticked changes nothing and is never refused for that reason. While the planner is open and visible it shows other people's changes within `plannerRefreshSeconds` (app config), and at once when you come back to it. Adding a dish someone else has just added says it is already in the meal and refreshes the meal; editing something someone else has just removed says so and refreshes.
 
+## Copying
+
+- Most weeks repeat, so the week header has "Copy last week" and each day has "Copy day", which asks for the day to copy to (the next day by default). Neither asks for confirmation.
+- A copy takes every dish of every meal in the source days and puts it in the meal of the same slot on the matching day of the target (the same day of the week for a week, the chosen day for a day). A dish that is not in the target meal yet is added, ticked for the same members as in the source. A dish that is already in the target meal is left as it is, ticks included. Nothing in the target is removed.
+- So copying again adds nothing, and two copies at once end exactly as one. The planner then says "Added N dishes", or "Nothing new to copy" when nothing was added.
+- Copying a week needs two different week starts; copying a day needs two different valid dates. Anything else is refused.
+- Copied meals are part of the plan like any other, so they show in the target week and its grocery lists.
+
 ## Daily nutrition
 
 - For each day and each member: kcal and protein are the sum of one serving of every dish the member is ticked for that day.

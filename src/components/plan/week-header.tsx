@@ -1,6 +1,7 @@
 "use client";
 
-import { CalendarDays, ChevronLeft, ChevronRight, CircleCheck } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, CircleCheck, CopyPlus } from "lucide-react";
+import { useState } from "react";
 import { useApiAction, rowMessage } from "@/components/household/use-api-action";
 import { Button } from "@/components/ui/button";
 import { FieldError } from "@/components/ui/field-parts";
@@ -9,7 +10,7 @@ import { IconLink } from "@/components/ui/icon-link";
 import { apiRequest } from "@/lib/http/api-client";
 import { addDaysTo, weekOffset } from "@/lib/time/week";
 import type { WeekPlanned } from "@/modules/meal/meal-schema";
-import { plannedLabel, weekRange, weekTag } from "./plan-format";
+import { copiedLabel, plannedLabel, weekRange, weekTag } from "./plan-format";
 import { useReloadAfterChange } from "./use-week";
 
 export interface WeekHeaderProps {
@@ -25,12 +26,24 @@ export interface WeekHeaderProps {
 export function WeekHeader({ weekStart, currentWeekStart, planned, refreshFailed, reload }: WeekHeaderProps) {
   const marking = useApiAction();
   const { pending, reloadNow } = useReloadAfterChange(reload);
+  const copying = useApiAction();
+  const [copied, setCopied] = useState<string | null>(null);
   const message = rowMessage(marking.failure);
   const path = `/api/weeks/${weekStart}/planned`;
 
   async function toggle() {
     const result = await marking.run(() => apiRequest(planned ? "DELETE" : "PUT", path));
     if (result.ok) await reloadNow();
+  }
+
+  async function copyLastWeek() {
+    setCopied(null);
+    const result = await copying.run(() =>
+      apiRequest<{ addedDishes: number }>("POST", `/api/weeks/${weekStart}/copy`, { fromWeekStart: addDaysTo(weekStart, -7) }),
+    );
+    if (!result.ok) return;
+    setCopied(copiedLabel(result.data.addedDishes));
+    await reloadNow();
   }
 
   return (
@@ -63,7 +76,12 @@ export function WeekHeader({ weekStart, currentWeekStart, planned, refreshFailed
             <CircleCheck size={20} aria-hidden="true" />
           </IconButton>
         )}
+        <IconButton label="Copy last week" loading={copying.busy} disabled={pending} onClick={() => void copyLastWeek()}>
+          <CopyPlus size={20} aria-hidden="true" />
+        </IconButton>
       </div>
+      {copied && <p role="status">{copied}</p>}
+      {copying.failure && <FieldError id="week-copy-error">{copying.failure.message}</FieldError>}
       {message && <FieldError id="week-planned-error">{message}</FieldError>}
       {refreshFailed && <p className="text-ink/75">Couldn’t refresh, trying again</p>}
     </div>

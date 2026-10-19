@@ -12,6 +12,10 @@ export const addMealDishSchema = z.union([
   z.object({ date: dateSchema, mealSlotId: z.uuid(), dishName: dishNameSchema }).strict(),
 ]);
 
+export const copyWeekSchema = z.object({ fromWeekStart: dateSchema }).strict();
+
+export const copyDaySchema = z.object({ fromDate: dateSchema }).strict();
+
 const versionSchema = z.number().int().min(1);
 
 export const setMealDishMemberSchema = z.object({ eats: z.boolean(), version: versionSchema }).strict();
@@ -29,6 +33,10 @@ export interface MealDishChange {
   id: string;
   version: number;
   memberIds: string[];
+}
+
+export interface CopyResult {
+  addedDishes: number;
 }
 
 export type AddMealDish = z.infer<typeof addMealDishSchema>;
