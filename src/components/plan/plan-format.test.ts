@@ -32,10 +32,10 @@ describe("weekTag", () => {
 });
 
 describe("plannedLabel", () => {
-  it("shows the time in the household timezone", () => {
-    const planned = { at: "2026-10-25T08:35:00.000Z", byMemberId: "m", byName: "Vishal" };
-    expect(plannedLabel(planned, "Asia/Kolkata")).toBe("Planned · Sun 14:05 by Vishal");
-    expect(plannedLabel({ ...planned, byName: null }, "UTC")).toBe("Planned · Sun 08:35");
+  it("shows the local time", () => {
+    const planned = { at: new Date(2026, 9, 25, 14, 5).toISOString(), byMemberId: "m", byName: "Vishal" };
+    expect(plannedLabel(planned)).toBe("Planned · Sun 14:05 by Vishal");
+    expect(plannedLabel({ ...planned, byName: null })).toBe("Planned · Sun 14:05");
   });
 });
 

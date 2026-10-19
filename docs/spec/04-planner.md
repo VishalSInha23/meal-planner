@@ -25,4 +25,4 @@
 ## Week planned
 
 - Each week has a "Week planned" button. Pressing it marks the week as planned (by whom and when, shown on the button); pressing it again undoes it.
-- The mark decides when the week's first grocery list becomes current (`05-grocery-lists.md`), and will later cancel the planning reminder.
+- The mark decides when the week's first grocery list becomes current (`05-grocery-lists.md`).

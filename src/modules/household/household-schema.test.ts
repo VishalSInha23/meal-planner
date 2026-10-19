@@ -1,20 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { onboardingSchema, timezoneSchema } from "./household-schema.ts";
+import { onboardingSchema } from "./household-schema.ts";
 import { validOnboarding } from "@/test/fixtures";
-
-describe("timezoneSchema", () => {
-  it("accepts IANA names", () => {
-    expect(timezoneSchema.parse("Europe/London")).toBe("Europe/London");
-    expect(timezoneSchema.parse("Asia/Kolkata")).toBe("Asia/Kolkata");
-    expect(timezoneSchema.parse("UTC")).toBe("UTC");
-  });
-
-  it("rejects anything else", () => {
-    for (const value of ["", "Mars/Base", "Mars/Olympus", "London", "+01:00", "EST5EDT", "Europe/"]) {
-      expect(timezoneSchema.safeParse(value).success, value).toBe(false);
-    }
-  });
-});
 
 describe("onboardingSchema", () => {
   it("accepts a valid submission", () => {

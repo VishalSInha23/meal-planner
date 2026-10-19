@@ -4,7 +4,7 @@ Grocery lists are worked out from the plan; they are never edited by hand. Ceres
 
 ## How a week is cut into lists
 
-- A meal's time is its date plus its slot's time, in the household's timezone. A meal belongs to the week that contains its date.
+- A meal's time is its date plus its slot's time, in local time. A meal belongs to the week that contains its date.
 - Each week has one list more than the number of shopping trips that fall inside it. A meal goes into list number N, where N (counting from 0) is the number of the week's shopping trips that are strictly earlier than the meal. So a meal at the same time as a trip belongs to the list before that trip.
 - A list contains every distinct ingredient of every dish in its meals that at least one member is ticked for. Each item shows which dishes need it. Items are sorted by name.
 - A list with no items says "Nothing to buy for this period".

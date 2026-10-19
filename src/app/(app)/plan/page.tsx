@@ -4,5 +4,5 @@ import { defaultPlannerWeek } from "@/lib/time/week";
 
 export default async function PlanPage() {
   const { household } = await requireMember();
-  redirect(`/plan/${defaultPlannerWeek(new Date(), household.timezone, household.weekStartDay)}`);
+  redirect(`/plan/${defaultPlannerWeek(new Date(), household.weekStartDay)}`);
 }

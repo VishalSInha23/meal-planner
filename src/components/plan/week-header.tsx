@@ -17,10 +17,9 @@ export interface WeekHeaderProps {
   // The first day of the week that holds today.
   currentWeekStart: string;
   planned: WeekPlanned | null;
-  timezone: string;
 }
 
-export function WeekHeader({ weekStart, currentWeekStart, planned, timezone }: WeekHeaderProps) {
+export function WeekHeader({ weekStart, currentWeekStart, planned }: WeekHeaderProps) {
   const marking = useApiAction();
   const { pending, refresh } = useWeekRefresh();
   const message = rowMessage(marking.failure);
@@ -54,7 +53,7 @@ export function WeekHeader({ weekStart, currentWeekStart, planned, timezone }: W
         {planned ? (
           <Button variant="primary" title="Undo week planned" loading={marking.busy} disabled={pending} onClick={() => void toggle()}>
             <CircleCheck size={20} aria-hidden="true" />
-            {plannedLabel(planned, timezone)}
+            {plannedLabel(planned)}
           </Button>
         ) : (
           <IconButton label="Week planned" loading={marking.busy} disabled={pending} onClick={() => void toggle()}>

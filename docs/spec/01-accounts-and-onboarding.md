@@ -13,9 +13,7 @@ An account without a household always goes to onboarding, and the rest of the ap
 1. **About you**: name (prefilled from the Google account), sex (male or female, required), date of birth (required; it can't be in the future or less than one year ago).
 2. **Household**:
    - name (required, 1–60 characters);
-   - timezone (defaults to the browser's), a single text field that suggests timezone names as you type; a value that is not a known timezone is an error;
    - week start day (default Monday);
-   - planning reminder time (default 16:00). The reminder is on the planning deadline, the day before the week starts. Ceres only stores this time for now;
    - meal slots: defaults Breakfast 08:00, Lunch 13:00, Dinner 20:00. Slots can be added, renamed, retimed and removed, and are always shown in time order (a row moves to its place when its time field loses focus); at least one is required, and no two slots may share a name or a time;
    - shopping trips: zero or more, each a day of the week and a time; no two at the same day and time;
    - which slots you eat in (default all).

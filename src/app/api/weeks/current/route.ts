@@ -5,7 +5,7 @@ import { defaultPlannerWeek } from "@/lib/time/week";
 export const GET = route(
   async () => {
     const { household } = await requireMember();
-    return Response.json({ weekStart: defaultPlannerWeek(new Date(), household.timezone, household.weekStartDay) });
+    return Response.json({ weekStart: defaultPlannerWeek(new Date(), household.weekStartDay) });
   },
   { route: "/api/weeks/current" },
 );

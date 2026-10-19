@@ -2,7 +2,6 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { household } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
-import { toTimeOfDay } from "@/lib/time-of-day";
 import type { Household, UpdateHousehold } from "./household-schema.ts";
 
 type Row = typeof household.$inferSelect;
@@ -11,9 +10,7 @@ function toHousehold(row: Row): Household {
   return {
     id: row.id,
     name: row.name,
-    timezone: row.timezone,
     weekStartDay: row.weekStartDay,
-    planningReminderTime: toTimeOfDay(row.planningReminderTime),
   };
 }
 

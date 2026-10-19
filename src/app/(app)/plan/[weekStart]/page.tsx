@@ -9,12 +9,12 @@ import { listMembers } from "@/modules/member/member-service";
 export default async function PlanWeekPage({ params }: { params: Promise<{ weekStart: string }> }) {
   const { weekStart } = await params;
   const member = await requireMember();
-  const { timezone, weekStartDay } = member.household;
+  const { weekStartDay } = member.household;
   const now = new Date();
-  if (!isCalendarDate(weekStart)) redirect(`/plan/${defaultPlannerWeek(now, timezone, weekStartDay)}`);
+  if (!isCalendarDate(weekStart)) redirect(`/plan/${defaultPlannerWeek(now, weekStartDay)}`);
   if (!isWeekStart(weekStart, weekStartDay)) redirect(`/plan/${weekStartFor(weekStart, weekStartDay)}`);
 
-  const today = localToday(now, timezone);
+  const today = localToday(now);
   const [week, members] = await Promise.all([getWeek(member.householdId, weekStart), listMembers(member.householdId)]);
   return (
     <PlanView
@@ -22,7 +22,6 @@ export default async function PlanWeekPage({ params }: { params: Promise<{ weekS
       members={members.map(({ id, name, kcalTarget, proteinTargetG }) => ({ id, name, kcalTarget, proteinTargetG }))}
       today={today}
       currentWeekStart={weekStartFor(today, weekStartDay)}
-      timezone={timezone}
     />
   );
 }

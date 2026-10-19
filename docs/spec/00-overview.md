@@ -29,4 +29,4 @@ The intended rhythm: once a week, before the planning deadline, the household sp
 
 ## Not in this version
 
-Joining another household, reminders and notifications (their times are stored only), portion sizes, ingredient quantities and units, recipes, calculated targets, offline use, languages other than English.
+Joining another household, notifications, portion sizes, ingredient quantities and units, recipes, calculated targets, offline use, languages other than English.

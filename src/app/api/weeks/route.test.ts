@@ -114,9 +114,9 @@ describe("/api/weeks and /api/meal-dishes", () => {
 
   it("gives the current week, and the next one on the planning deadline", async () => {
     await signedIn();
-    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-10-24T12:00:00Z") });
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date(2026, 9, 24, 12) });
     expect(await (await getCurrent(jsonRequest("GET", "/api/weeks/current"), paramsOf())).json()).toEqual({ weekStart: MONDAY });
-    vi.setSystemTime(new Date("2026-10-25T12:00:00Z"));
+    vi.setSystemTime(new Date(2026, 9, 25, 12));
     expect(await (await getCurrent(jsonRequest("GET", "/api/weeks/current"), paramsOf())).json()).toEqual({ weekStart: "2026-10-26" });
   });
 

@@ -26,7 +26,7 @@ describe("createHousehold", () => {
   it("creates the household, slots, trips, members and their slots", async () => {
     const overview = await createHousehold("user-1", validOnboarding());
 
-    expect(overview.household).toMatchObject({ name: "Home", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" });
+    expect(overview.household).toMatchObject({ name: "Home", weekStartDay: 1 });
     expect(overview.mealSlots.map((slot) => [slot.name, slot.time])).toEqual([
       ["Breakfast", "08:00"],
       ["Dinner", "20:00"],

@@ -62,36 +62,26 @@ describe("weekDates and planningDeadline", () => {
 
 describe("defaultPlannerWeek", () => {
   it("is the current week on a normal day", () => {
-    expect(defaultPlannerWeek(new Date("2026-10-21T12:00:00Z"), "UTC", 1)).toBe("2026-10-19");
+    expect(defaultPlannerWeek(new Date(2026, 9, 21, 12), 1)).toBe("2026-10-19");
   });
 
   it("is the next week on the planning deadline", () => {
     // Sunday 25 October is the deadline for the week starting Monday 26 October.
-    expect(defaultPlannerWeek(new Date("2026-10-25T12:00:00Z"), "UTC", 1)).toBe("2026-10-26");
+    expect(defaultPlannerWeek(new Date(2026, 9, 25, 12), 1)).toBe("2026-10-26");
     // Tuesday is the deadline when the week starts on Wednesday.
-    expect(defaultPlannerWeek(new Date("2026-10-20T12:00:00Z"), "UTC", 3)).toBe("2026-10-21");
-    expect(defaultPlannerWeek(new Date("2026-10-19T12:00:00Z"), "UTC", 3)).toBe("2026-10-14");
+    expect(defaultPlannerWeek(new Date(2026, 9, 20, 12), 3)).toBe("2026-10-21");
+    expect(defaultPlannerWeek(new Date(2026, 9, 19, 12), 3)).toBe("2026-10-14");
   });
 
   it("is the current week on the first day of a week", () => {
-    expect(defaultPlannerWeek(new Date("2026-10-26T12:00:00Z"), "UTC", 1)).toBe("2026-10-26");
+    expect(defaultPlannerWeek(new Date(2026, 9, 26, 12), 1)).toBe("2026-10-26");
   });
 });
 
 describe("localToday", () => {
-  it("uses the household timezone just after local midnight", () => {
-    // 00:30 on Tuesday 20 October in Kolkata (UTC+5:30) is still Monday 19 October in UTC.
-    const now = new Date("2026-10-19T19:00:00Z");
-    expect(now.toISOString().slice(0, 10)).toBe("2026-10-19");
-    expect(localToday(now, "Asia/Kolkata")).toBe("2026-10-20");
-    expect(localToday(now, "UTC")).toBe("2026-10-19");
-  });
-
-  it("changes the default week with the timezone", () => {
-    // Saturday 24 October 20:00 UTC is already Sunday 25 October in Kolkata, the deadline day.
-    const now = new Date("2026-10-24T20:00:00Z");
-    expect(defaultPlannerWeek(now, "UTC", 1)).toBe("2026-10-19");
-    expect(defaultPlannerWeek(now, "Asia/Kolkata", 1)).toBe("2026-10-26");
+  it("is the local calendar date", () => {
+    expect(localToday(new Date(2026, 9, 20, 0, 30))).toBe("2026-10-20");
+    expect(localToday(new Date(2026, 9, 19, 23, 59))).toBe("2026-10-19");
   });
 });
 
@@ -106,15 +96,8 @@ describe("weekOffset", () => {
 });
 
 describe("localDateTimeToInstant", () => {
-  it("converts across a daylight saving change in New York", () => {
-    // Clocks went forward on Sunday 8 March 2026: EST (UTC-5) before, EDT (UTC-4) after.
-    expect(localDateTimeToInstant("2026-03-07", "12:00", "America/New_York").toISOString()).toBe("2026-03-07T17:00:00.000Z");
-    expect(localDateTimeToInstant("2026-03-08", "12:00", "America/New_York").toISOString()).toBe("2026-03-08T16:00:00.000Z");
-    expect(localDateTimeToInstant("2026-03-09", "08:30", "America/New_York").toISOString()).toBe("2026-03-09T12:30:00.000Z");
-  });
-
-  it("converts in Kolkata and UTC", () => {
-    expect(localDateTimeToInstant("2026-10-20", "00:30", "Asia/Kolkata").toISOString()).toBe("2026-10-19T19:00:00.000Z");
-    expect(localDateTimeToInstant("2026-10-20", "00:30", "UTC").toISOString()).toBe("2026-10-20T00:30:00.000Z");
+  it("builds a local Date", () => {
+    expect(localDateTimeToInstant("2026-10-20", "00:30")).toEqual(new Date(2026, 9, 20, 0, 30));
+    expect(localDateTimeToInstant("2026-03-09", "08:30")).toEqual(new Date(2026, 2, 9, 8, 30));
   });
 });

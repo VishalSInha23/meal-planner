@@ -24,7 +24,7 @@ export interface PersonDraft extends MemberDraft {
 
 export interface OnboardingState {
   you: PersonDraft;
-  household: { name: string; timezone: string; weekStartDay: number; planningReminderTime: string };
+  household: { name: string; weekStartDay: number };
   slots: SlotDraft[];
   trips: TripDraft[];
   members: PersonDraft[];
@@ -42,11 +42,11 @@ const DEFAULT_SLOTS = [
   { name: "Dinner", time: "20:00" },
 ];
 
-export function initialState(userName: string, timezone: string): OnboardingState {
+export function initialState(userName: string): OnboardingState {
   const slots = DEFAULT_SLOTS.map((slot) => ({ ...slot, key: newKey() }));
   return {
     you: { ...emptyMemberDraft(slots.map((slot) => slot.key), userName), key: newKey() },
-    household: { name: "", timezone, weekStartDay: 1, planningReminderTime: "16:00" },
+    household: { name: "", weekStartDay: 1 },
     slots,
     trips: [],
     members: [],

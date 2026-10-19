@@ -44,8 +44,7 @@ function numberOrNull(text: string): number | null {
 
 export type MemberValidation = { ok: true; payload: CreateMember } | { ok: false; fields: FieldErrors };
 
-// Checks a draft with the module's zod schema, so the rules live in one place. `today` ("YYYY-MM-DD" in the
-// household's timezone) enables the date of birth range check the API also makes.
+// Checks a draft with the module's zod schema, so the rules live in one place. `today` ("YYYY-MM-DD", local time) enables the date of birth range check the API also makes.
 export function validateMemberDraft(draft: MemberDraft, today?: string): MemberValidation {
   const fields: FieldErrors = {};
   const kcalTarget = numberOrNull(draft.kcalTarget);

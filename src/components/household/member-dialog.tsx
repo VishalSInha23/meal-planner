@@ -7,7 +7,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field-parts";
 import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
-import { todayInTimezone } from "@/lib/dates";
+import { localToday } from "@/lib/time/week";
 import { apiRequest } from "@/lib/http/api-client";
 import type { HouseholdOverview } from "@/modules/household/household-schema";
 import type { MemberWithSlots } from "@/modules/member/member-schema";
@@ -62,7 +62,7 @@ function MemberDialogBody({ member, overview, viewer, onClose, reload }: MemberD
   }
 
   async function save() {
-    const today = todayInTimezone(overview.household.timezone);
+    const today = localToday(new Date());
     const result = validateMemberDraft(draft, today);
     if (!result.ok) {
       setErrors(result.fields);

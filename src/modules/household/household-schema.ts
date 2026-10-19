@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { timeOfDaySchema } from "@/lib/time-of-day";
 import { mealSlotListSchema } from "../meal-slot/meal-slot-schema.ts";
 import { shoppingTripListSchema } from "../shopping-trip/shopping-trip-schema.ts";
-import { todayInTimezone } from "@/lib/dates";
+import { localToday } from "@/lib/time/week";
 import {
   ageBandSchema,
   dateOfBirthProblem,
@@ -16,29 +15,13 @@ import type { ShoppingTrip } from "../shopping-trip/shopping-trip-schema.ts";
 
 export const householdNameSchema = z.string().trim().min(1, "Give the household a name").max(60, "Use at most 60 characters");
 
-function isIanaTimezone(value: string): boolean {
-  // Region/City names and UTC only: no offsets such as "+01:00" and no POSIX rules such as "EST5EDT".
-  if (value !== "UTC" && !/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+)+$/.test(value)) return false;
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// An IANA name such as "Europe/London" or "UTC". Aliases a browser may send, like "Asia/Kolkata", are fine.
-export const timezoneSchema = z.string().refine(isIanaTimezone, "Use a timezone name like Europe/London");
-
 // 0 = Sunday ... 6 = Saturday.
 export const weekStartDaySchema = z.number().int("Pick a day").min(0, "Pick a day").max(6, "Pick a day");
 
 export const updateHouseholdSchema = z
   .object({
     name: householdNameSchema,
-    timezone: timezoneSchema,
     weekStartDay: weekStartDaySchema,
-    planningReminderTime: timeOfDaySchema,
   })
   .partial()
   .strict()
@@ -62,9 +45,7 @@ export const onboardingSchema = z
     household: z
       .object({
         name: householdNameSchema,
-        timezone: timezoneSchema,
         weekStartDay: weekStartDaySchema,
-        planningReminderTime: timeOfDaySchema,
       })
       .strict(),
     mealSlots: mealSlotListSchema,
@@ -84,9 +65,8 @@ export const onboardingSchema = z
       }
     };
     check(input.you.slotPositions, ["you"]);
-    // The range check needs the household's today; a bad timezone is reported on its own field.
-    if (isIanaTimezone(input.household.timezone) && dateOfBirthSchema.safeParse(input.you.dateOfBirth).success) {
-      const problem = dateOfBirthProblem(input.you.dateOfBirth, todayInTimezone(input.household.timezone));
+    if (dateOfBirthSchema.safeParse(input.you.dateOfBirth).success) {
+      const problem = dateOfBirthProblem(input.you.dateOfBirth, localToday(new Date()));
       if (problem) context.addIssue({ code: "custom", path: ["you", "dateOfBirth"], message: problem });
     }
     input.members.forEach((member, index) => check(member.slotPositions, ["members", index]));
@@ -98,9 +78,7 @@ export type Onboarding = z.infer<typeof onboardingSchema>;
 export interface Household {
   id: string;
   name: string;
-  timezone: string;
   weekStartDay: number;
-  planningReminderTime: string;
 }
 
 export interface HouseholdOverview {

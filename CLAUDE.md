@@ -8,7 +8,7 @@ Ceres is a household meal planner built as one Next.js app (pages and API). Prod
 - PostgreSQL 18 through Drizzle ORM (`drizzle-orm`, `drizzle-kit`) and the `pg` driver.
 - Better Auth with Google sign-in only. No passwords.
 - Tailwind CSS 4 and Radix primitives (`radix-ui`). Fonts are self-hosted from Fontsource packages.
-- zod for every input and every config file. date-fns with `@date-fns/tz` for dates and timezones.
+- zod for every input and every config file. date-fns for dates (local time).
 - Vitest with v8 coverage. pino for logs.
 - Exact versions in `package.json` (no `^` or `~`). Don't add a dependency the task doesn't name. If one is really needed, stop and explain why.
 

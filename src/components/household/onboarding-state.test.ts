@@ -15,7 +15,7 @@ import {
 } from "./onboarding-state";
 
 function filled(): OnboardingState {
-  const state = initialState("Asha Rao", "Europe/London");
+  const state = initialState("Asha Rao");
   return {
     ...state,
     you: { ...state.you, sex: "female", dateOfBirth: "1988-04-23" },
@@ -25,7 +25,7 @@ function filled(): OnboardingState {
 
 describe("initialState", () => {
   it("starts with the default slots, all ticked for you, Monday and 16:00", () => {
-    const state = initialState("Asha Rao", "Europe/London");
+    const state = initialState("Asha Rao");
     expect(state.slots.map(({ name, time }) => [name, time])).toEqual([
       ["Breakfast", "08:00"],
       ["Lunch", "13:00"],
@@ -33,7 +33,7 @@ describe("initialState", () => {
     ]);
     expect(state.you.slotIds).toEqual(state.slots.map((slot) => slot.key));
     expect(state.you.name).toBe("Asha Rao");
-    expect(state.household).toEqual({ name: "", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" });
+    expect(state.household).toEqual({ name: "", weekStartDay: 1 });
     expect(state.trips).toEqual([]);
     expect(state.members).toEqual([]);
   });
@@ -52,7 +52,7 @@ describe("buildPayload", () => {
     };
     expect(buildPayload(state)).toEqual({
       you: { name: "Asha Rao", sex: "female", dateOfBirth: "1988-04-23", slotPositions: [0, 2] },
-      household: { name: "Rao home", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" },
+      household: { name: "Rao home", weekStartDay: 1 },
       mealSlots: [
         { name: "Breakfast", time: "08:00" },
         { name: "Lunch", time: "13:00" },
@@ -127,7 +127,7 @@ describe("validateOnboarding", () => {
   });
 
   it("names the fields that are wrong, with the API's dotted paths", () => {
-    let state = addPerson(initialState("", "Europe/London"));
+    let state = addPerson(initialState(""));
     state = { ...state, slots: [...state.slots.slice(0, 2), { ...state.slots[2]!, time: "13:00" }] };
     const result = validateOnboarding(state);
     expect(result).toEqual({
@@ -167,7 +167,7 @@ describe("steps", () => {
     expect(stepOfField("you.name")).toBe(1);
     expect(stepOfField("you.dateOfBirth")).toBe(1);
     expect(stepOfField("you.slotPositions")).toBe(2);
-    expect(stepOfField("household.timezone")).toBe(2);
+    expect(stepOfField("household.weekStartDay")).toBe(2);
     expect(stepOfField("mealSlots")).toBe(2);
     expect(stepOfField("shoppingTrips.0.time")).toBe(2);
     expect(stepOfField("members.0.name")).toBe(3);

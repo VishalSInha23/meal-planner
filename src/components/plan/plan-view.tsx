@@ -9,10 +9,9 @@ import { WeekHeader } from "./week-header";
 export interface PlanViewProps {
   week: Week;
   members: DayMember[];
-  // Today's date in the household timezone.
+  // Today's date in the local time.
   today: string;
   currentWeekStart: string;
-  timezone: string;
 }
 
 interface OpenMeal {
@@ -20,13 +19,13 @@ interface OpenMeal {
   slotId: string;
 }
 
-export function PlanView({ week, members, today, currentWeekStart, timezone }: PlanViewProps) {
+export function PlanView({ week, members, today, currentWeekStart }: PlanViewProps) {
   const [open, setOpen] = useState<OpenMeal | null>(null);
   const slot = open ? week.mealSlots.find((candidate) => candidate.id === open.slotId) : undefined;
 
   return (
     <div className="flex flex-col gap-4">
-      <WeekHeader weekStart={week.weekStart} currentWeekStart={currentWeekStart} planned={week.planned} timezone={timezone} />
+      <WeekHeader weekStart={week.weekStart} currentWeekStart={currentWeekStart} planned={week.planned} />
       <div className="grid gap-4 md:grid-cols-2">
         {week.dates.map((date) => (
           <DayCard

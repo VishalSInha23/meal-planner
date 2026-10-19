@@ -72,10 +72,10 @@ describe("/api/household", () => {
     signInAs("new-user");
     const input = validOnboarding();
     input.members.push({ name: "", sex: "male", ageBand: "6-10", slotPositions: [0] });
-    input.household.timezone = "Mars/Olympus";
+    input.household.weekStartDay = 9;
     const response = await post(input);
     expect(response.status).toBe(400);
-    expect(Object.keys((await response.json()).error.fields).toSorted()).toEqual(["household.timezone", "members.1.name"]);
+    expect(Object.keys((await response.json()).error.fields).toSorted()).toEqual(["household.weekStartDay", "members.1.name"]);
     expect(await getDb().select().from(household)).toHaveLength(0);
     expect(await getDb().select().from(member)).toHaveLength(0);
   });
@@ -83,9 +83,9 @@ describe("/api/household", () => {
   it("lets an admin change the settings, and only the given fields", async () => {
     const fixture = await createHouseholdFixture("a");
     signInAs(fixture.adminUserId);
-    const response = await patch({ name: "  New name ", timezone: "Asia/Kolkata", weekStartDay: 0, planningReminderTime: "17:30" });
+    const response = await patch({ name: "  New name ", weekStartDay: 0 });
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ name: "New name", timezone: "Asia/Kolkata", weekStartDay: 0, planningReminderTime: "17:30" });
+    expect(await response.json()).toMatchObject({ name: "New name", weekStartDay: 0 });
 
     const partial = await patch({ weekStartDay: 3 });
     expect(await partial.json()).toMatchObject({ name: "New name", weekStartDay: 3 });
@@ -98,11 +98,8 @@ describe("/api/household", () => {
       {},
       { name: "" },
       { name: "x".repeat(61) },
-      { timezone: "Nowhere/Land" },
       { weekStartDay: 7 },
       { weekStartDay: -1 },
-      { planningReminderTime: "25:00" },
-      { planningReminderTime: "9:00" },
     ]) {
       expect((await patch(body)).status, JSON.stringify(body)).toBe(400);
     }

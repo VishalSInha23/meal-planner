@@ -12,8 +12,8 @@
 
 ## Settings
 
-- **Name**, **timezone** and **week start day**. The timezone decides what "today" is, where weeks begin and end, and how grocery lists are cut. Changing the week start day changes how weeks are shown and cut; meals stay on their dates, and "week planned" marks made for the old week starts no longer apply.
-- **Planning reminder time**: stored for later reminders. The planning deadline is always the day before the week start day (week starts Monday, the deadline is Sunday; week starts Wednesday, it is Tuesday).
+- **Name** and **week start day**. Dates and times are the server's local time. Changing the week start day changes how weeks are shown and cut; meals stay on their dates, and "week planned" marks made for the old week starts no longer apply.
+- **Planning deadline**: always the day before the week start day (week starts Monday, the deadline is Sunday; week starts Wednesday, it is Tuesday).
 - **Meal slots**: name (1–30 characters, unique in the household), time of day, shown in time order. Changing a slot's time keeps its meals in that slot. A slot that any meal uses can't be removed; the message says how many meals use it. The household's only slot can't be deleted (409 `last_slot`), and neither can a slot that is some member's only slot (409 `member_needs_slot`, "Priya eats only in this slot").
 - **Shopping trips**: a day of the week and a time each, unique. They decide how grocery lists are cut (`05-grocery-lists.md`).
 

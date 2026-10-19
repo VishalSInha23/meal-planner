@@ -1,4 +1,3 @@
-import { TZDate } from "@date-fns/tz";
 import { format } from "date-fns";
 import { addDaysTo } from "@/lib/time/week";
 import type { MemberDayNutrition, TargetResult } from "@/modules/meal/meal-nutrition";
@@ -33,9 +32,9 @@ export function weekTag(offset: number): string {
   return offset === -1 ? "1 week ago" : `${-offset} weeks ago`;
 }
 
-// "Planned · Sun 14:05 by Vishal", in the household timezone.
-export function plannedLabel(planned: WeekPlanned, timezone: string): string {
-  const when = format(new TZDate(new Date(planned.at).getTime(), timezone), "EEE HH:mm");
+// "Planned · Sun 14:05 by Vishal", in local time.
+export function plannedLabel(planned: WeekPlanned): string {
+  const when = format(new Date(planned.at), "EEE HH:mm");
   return `Planned · ${when}${planned.byName ? ` by ${planned.byName}` : ""}`;
 }
 

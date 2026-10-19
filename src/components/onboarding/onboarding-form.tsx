@@ -21,7 +21,6 @@ import {
 } from "@/components/household/onboarding-state";
 import type { FieldErrors, MemberDraft } from "@/components/household/member-draft";
 import { SlotRow } from "@/components/household/slot-row";
-import { TimezoneField } from "@/components/household/timezone-field";
 import { TripRow } from "@/components/household/trip-row";
 import { Card } from "@/components/ui/card";
 import { FieldError } from "@/components/ui/field-parts";
@@ -32,14 +31,10 @@ import { apiRequest } from "@/lib/http/api-client";
 
 const STEP_TITLES: Record<Step, string> = { 1: "About you", 2: "Your household", 3: "Other members" };
 
-function browserTimezone(): string {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-}
-
 export function OnboardingForm({ userName }: { userName: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
-  const [state, setState] = useState<OnboardingState>(() => initialState(userName, browserTimezone()));
+  const [state, setState] = useState<OnboardingState>(() => initialState(userName));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
@@ -122,25 +117,12 @@ export function OnboardingForm({ userName }: { userName: string }) {
               error={errors["household.name"]}
               autoComplete="off"
             />
-            <TimezoneField
-              value={state.household.timezone}
-              onValueChange={(timezone) => edit((s) => ({ ...s, household: { ...s.household, timezone } }))}
-              error={errors["household.timezone"]}
-            />
             <Select
               label="Week starts on"
               options={DAY_OPTIONS}
               value={String(state.household.weekStartDay)}
               onValueChange={(value) => edit((s) => ({ ...s, household: { ...s.household, weekStartDay: Number(value) } }))}
               error={errors["household.weekStartDay"]}
-            />
-            <TextField
-              label="Planning reminder time"
-              type="time"
-              hint="The reminder is the day before the week starts."
-              value={state.household.planningReminderTime}
-              onChange={(event) => edit((s) => ({ ...s, household: { ...s.household, planningReminderTime: event.target.value } }))}
-              error={errors["household.planningReminderTime"]}
             />
           </Card>
 

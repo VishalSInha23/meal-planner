@@ -9,7 +9,7 @@ export const meal = pgTable(
     householdId: uuid("household_id")
       .notNull()
       .references(() => household.id, { onDelete: "cascade" }),
-    // The local date in the household timezone.
+    // The local date in local time.
     date: date("date", { mode: "string" }).notNull(),
     // A slot that meals use can't be deleted.
     mealSlotId: uuid("meal_slot_id")

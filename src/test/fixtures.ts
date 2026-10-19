@@ -24,7 +24,7 @@ export async function createHouseholdFixture(tag: string): Promise<Fixture> {
   await createUser(adminUserId);
   const [{ id: householdId }] = await db
     .insert(household)
-    .values({ name: `House ${tag}`, timezone: "UTC", weekStartDay: 1, planningReminderTime: "16:00" })
+    .values({ name: `House ${tag}`, weekStartDay: 1 })
     .returning({ id: household.id });
   const slots = await db
     .insert(mealSlot)
@@ -56,7 +56,7 @@ export async function addAccountMember(householdId: string, slotIds: string[], u
 export function validOnboarding(overrides: Partial<Onboarding> = {}): Onboarding {
   return {
     you: { name: "Asha", sex: "female", dateOfBirth: "1988-04-23", slotPositions: [0, 1] },
-    household: { name: "Home", timezone: "Europe/London", weekStartDay: 1, planningReminderTime: "16:00" },
+    household: { name: "Home", weekStartDay: 1 },
     mealSlots: [
       { name: "Breakfast", time: "08:00" },
       { name: "Dinner", time: "20:00" },

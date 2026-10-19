@@ -1,5 +1,5 @@
 import { withTransaction, type Tx } from "@/db/transaction";
-import { todayInTimezone } from "@/lib/dates";
+import { localToday } from "@/lib/time/week";
 import { AppError, adminOnly, badRequest, forbidden, notFound } from "@/lib/http/errors";
 import * as householdRepository from "../household/household-repository.ts";
 import type { Household } from "../household/household-schema.ts";
@@ -40,7 +40,7 @@ async function checkSlots(householdId: string, slotIds: string[]): Promise<strin
 async function checkDateOfBirth(householdId: string, dateOfBirth: string): Promise<void> {
   const household = await householdRepository.findById(householdId);
   if (!household) throw notFound("Household not found");
-  const problem = dateOfBirthProblem(dateOfBirth, todayInTimezone(household.timezone));
+  const problem = dateOfBirthProblem(dateOfBirth, localToday(new Date()));
   if (problem) throw badRequest("Some fields are invalid", { dateOfBirth: problem });
 }
 

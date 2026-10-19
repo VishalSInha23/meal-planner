@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCalendarDate, oneYearBefore, todayInTimezone } from "./dates.ts";
-
-describe("todayInTimezone", () => {
-  const instant = new Date("2026-03-01T23:30:00Z");
-
-  it("uses the date in the given zone", () => {
-    expect(todayInTimezone("UTC", instant)).toBe("2026-03-01");
-    expect(todayInTimezone("Asia/Kolkata", instant)).toBe("2026-03-02");
-    expect(todayInTimezone("America/Los_Angeles", instant)).toBe("2026-03-01");
-  });
-});
+import { isCalendarDate, oneYearBefore } from "./dates.ts";
 
 describe("isCalendarDate", () => {
   it("accepts real dates and rejects the rest", () => {

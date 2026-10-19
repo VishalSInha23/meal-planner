@@ -1,4 +1,3 @@
-import { TZDate } from "@date-fns/tz";
 import { addDays, format } from "date-fns";
 
 const DATE_FORMAT = "yyyy-MM-dd";
@@ -22,9 +21,9 @@ function dayOfWeek(date: string): number {
   return parse(date).getUTCDay();
 }
 
-// Today's local date in the household timezone.
-export function localToday(now: Date, timezone: string): string {
-  return format(new TZDate(now.getTime(), timezone), DATE_FORMAT);
+// The local calendar date of the instant.
+export function localToday(now: Date): string {
+  return format(now, DATE_FORMAT);
 }
 
 // The first day of the week that holds the date.
@@ -46,8 +45,8 @@ export function planningDeadline(weekStart: string): string {
 }
 
 // The current week, or the next one when today is the next week's planning deadline.
-export function defaultPlannerWeek(now: Date, timezone: string, weekStartDay: number): string {
-  const today = localToday(now, timezone);
+export function defaultPlannerWeek(now: Date, weekStartDay: number): string {
+  const today = localToday(now);
   const current = weekStartFor(today, weekStartDay);
   const next = addDaysTo(current, 7);
   return today === planningDeadline(next) ? next : current;
@@ -58,9 +57,9 @@ export function weekOffset(weekStart: string, currentWeekStart: string): number 
   return Math.round((parse(weekStart).getTime() - parse(currentWeekStart).getTime()) / (7 * 86_400_000));
 }
 
-// The instant at which the wall clock in the timezone reads the date and the "HH:MM" time.
-export function localDateTimeToInstant(date: string, time: string, timezone: string): Date {
+// The local Date at which the wall clock reads the date and the "HH:MM" time.
+export function localDateTimeToInstant(date: string, time: string): Date {
   const [year, month, day] = date.split("-").map(Number);
   const [hour, minute] = time.split(":").map(Number);
-  return new Date(new TZDate(year, month - 1, day, hour, minute, 0, 0, timezone).getTime());
+  return new Date(year, month - 1, day, hour, minute, 0, 0);
 }
