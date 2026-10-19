@@ -1,7 +1,8 @@
-import { and, asc, count, eq, gte, inArray, lte, notExists, type SQL } from "drizzle-orm";
+import { and, asc, count, eq, gte, inArray, lte, notExists, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db/client";
-import { dish, meal, mealDish, mealDishMember } from "@/db/schema";
+import { dish, dishIngredient, ingredient, meal, mealDish, mealDishMember } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
+import type { GroceryMeal } from "../grocery-check/grocery-list.ts";
 import type { MealDishRow } from "./meal-schema.ts";
 
 async function readMealDishes(householdId: string, where: SQL | undefined, db: DbOrTx): Promise<MealDishRow[]> {
@@ -43,6 +44,45 @@ async function readMealDishes(householdId: string, where: SQL | undefined, db: D
 // Every dish of the household's meals from one date to another, both included, oldest first.
 export function listMealDishes(householdId: string, from: string, to: string, db: DbOrTx = getDb()): Promise<MealDishRow[]> {
   return readMealDishes(householdId, and(gte(meal.date, from), lte(meal.date, to)), db);
+}
+
+// The household's meals from a date on, with each dish, its ingredients and the number of members ticked for it.
+// One query whatever the number of meals: a row per meal, dish and ingredient, folded here.
+export async function listGroceryMeals(householdId: string, from: string, db: DbOrTx = getDb()): Promise<GroceryMeal[]> {
+  const rows = await db
+    .select({
+      date: meal.date,
+      mealSlotId: meal.mealSlotId,
+      dishId: dish.id,
+      dishName: dish.name,
+      eaterCount: sql<number>`(select count(*)::int from ${mealDishMember} where ${mealDishMember.mealDishId} = ${mealDish.id})`,
+      ingredientId: ingredient.id,
+      ingredientName: ingredient.name,
+    })
+    .from(meal)
+    .innerJoin(mealDish, eq(mealDish.mealId, meal.id))
+    .innerJoin(dish, eq(dish.id, mealDish.dishId))
+    .leftJoin(dishIngredient, eq(dishIngredient.dishId, dish.id))
+    .leftJoin(ingredient, eq(ingredient.id, dishIngredient.ingredientId))
+    .where(and(eq(meal.householdId, householdId), gte(meal.date, from)))
+    .orderBy(asc(meal.date), asc(meal.id), asc(mealDish.createdAt), asc(mealDish.id));
+
+  const meals = new Map<string, GroceryMeal>();
+  const dishes = new Map<string, GroceryMeal["dishes"][number]>();
+  for (const row of rows) {
+    const mealKey = `${row.date}|${row.mealSlotId}`;
+    const found = meals.get(mealKey) ?? { date: row.date, mealSlotId: row.mealSlotId, dishes: [] };
+    meals.set(mealKey, found);
+    const dishKey = `${mealKey}|${row.dishId}`;
+    let entry = dishes.get(dishKey);
+    if (!entry) {
+      entry = { dishId: row.dishId, dishName: row.dishName, eaterCount: row.eaterCount, ingredients: [] };
+      dishes.set(dishKey, entry);
+      found.dishes.push(entry);
+    }
+    if (row.ingredientId !== null && row.ingredientName !== null) entry.ingredients.push({ id: row.ingredientId, name: row.ingredientName });
+  }
+  return [...meals.values()];
 }
 
 export async function findMealDish(householdId: string, id: string, db: DbOrTx = getDb()): Promise<MealDishRow | null> {

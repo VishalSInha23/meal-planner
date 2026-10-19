@@ -1,7 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { member, weekPlan } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
+import type { GroceryWeekPlan } from "../grocery-check/grocery-list.ts";
 import type { WeekPlanned } from "../meal/meal-schema.ts";
 
 export async function find(householdId: string, weekStart: string, db: DbOrTx = getDb()): Promise<WeekPlanned | null> {
@@ -20,4 +21,12 @@ export async function insert(householdId: string, weekStart: string, memberId: s
 
 export async function remove(householdId: string, weekStart: string, db: DbOrTx = getDb()): Promise<void> {
   await db.delete(weekPlan).where(and(eq(weekPlan.householdId, householdId), eq(weekPlan.weekStart, weekStart)));
+}
+
+// The marks of the weeks starting on or after the date.
+export async function listFrom(householdId: string, weekStart: string, db: DbOrTx = getDb()): Promise<GroceryWeekPlan[]> {
+  return db
+    .select({ weekStart: weekPlan.weekStart, plannedAt: weekPlan.plannedAt })
+    .from(weekPlan)
+    .where(and(eq(weekPlan.householdId, householdId), gte(weekPlan.weekStart, weekStart)));
 }

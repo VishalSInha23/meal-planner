@@ -64,6 +64,13 @@
       "when": 1792383482660,
       "tag": "0008_married_sunfire",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792384469707,
+      "tag": "0009_bright_supernaut",
+      "breakpoints": true
     }
   ]
 }

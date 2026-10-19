@@ -42,3 +42,11 @@ export async function search(householdId: string, text: string, limit: number, d
     .orderBy(...order)
     .limit(limit);
 }
+
+export async function existsInHousehold(householdId: string, id: string, db: DbOrTx = getDb()): Promise<boolean> {
+  const rows = await db
+    .select({ id: ingredient.id })
+    .from(ingredient)
+    .where(and(eq(ingredient.householdId, householdId), eq(ingredient.id, id)));
+  return rows.length > 0;
+}

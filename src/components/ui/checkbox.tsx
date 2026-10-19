@@ -1,12 +1,12 @@
 "use client";
 
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { Checkbox as RadixCheckbox } from "radix-ui";
 import { Spinner } from "./spinner";
 import { FieldError, FieldHint, controlBorder } from "./field-parts";
 
 export interface CheckboxProps {
-  label: string;
+  label: ReactNode;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   hint?: string;

@@ -65,6 +65,8 @@ export interface GroceryList {
   // The first and last slot occurrence in the list; null when no slot falls in it.
   from: GroceryOccurrence | null;
   to: GroceryOccurrence | null;
+  // How many planned meals fall in the list, whether or not they need anything.
+  mealCount: number;
   items: GroceryItem[];
 }
 
@@ -114,6 +116,7 @@ export function buildGroceryLists(input: GroceryListInput): GroceryList[] {
         shoppingReason: index > 0 ? "trip" : planned ? "planned" : "week_start",
         from: null,
         to: null,
+        mealCount: 0,
         items: [],
       });
     }
@@ -135,6 +138,7 @@ export function buildGroceryLists(input: GroceryListInput): GroceryList[] {
       const slot = slotById.get(meal.mealSlotId);
       if (!slot) throw new Error(`Unknown meal slot ${meal.mealSlotId}`);
       const index = listIndexAt(localDateTimeToInstant(meal.date, slot.time), times);
+      weekLists[index].mealCount++;
       for (const dish of meal.dishes) {
         if (dish.eaterCount <= 0) continue;
         for (const ingredient of dish.ingredients) {

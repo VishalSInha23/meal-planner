@@ -15,3 +15,4 @@ export * from "./meal.ts";
 export * from "./meal-dish.ts";
 export * from "./meal-dish-member.ts";
 export * from "./week-plan.ts";
+export * from "./grocery-check.ts";

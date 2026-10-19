@@ -30,6 +30,7 @@ On Saturday at 12:00 the current list is list 3. When the next week is marked pl
 ## Grocery page
 
 - The current list comes first, labelled with the meals it covers ("Wed 21 Oct breakfast – Fri 23 Oct breakfast") and its shopping time.
+- The page has the tabs Current (selected first), Upcoming and Previous. Each list shows the meals it covers, when to shop ("Shop Tue 20 Oct, 21:00"; for a week's first list that isn't marked planned yet, "Shop when the week is planned, by Mon 26 Oct") and its items, each with the dishes that need it ("for dal, cauliflower curry"). A ticked item is struck through and marked ✓.
 - Items can be ticked off. Ticks are saved and shared with the household, and have no effect on when the next list starts.
-- "Previous" shows the lists whose shopping time was in the 7 days before the current list's. "Upcoming" shows the lists after the current one, for weeks that have any meals.
+- "Previous" shows the lists whose shopping time was within the 7 days before the current list's (exactly 7 days included, so a weekly trip still shows last week's list). "Upcoming" shows the lists after the current one that have at least one meal.
 - Because lists are worked out from the plan, changing a meal also changes its list, including a list that is already past. Ticks belong to a list (its week and position in the week) and an ingredient; changing the shopping trips or the week start re-cuts the lists, and earlier ticks may no longer match.
