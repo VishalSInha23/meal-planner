@@ -14,6 +14,7 @@ import type { MemberWithSlots } from "@/modules/member/member-schema";
 import type { Units } from "@/modules/user-preference/user-preference-schema";
 import { draftFromMember, emptyMemberDraft, validateMemberDraft, type FieldErrors } from "./member-draft";
 import { MemberForm } from "./member-form";
+import { SuggestTargets } from "./suggest-targets";
 import { rowMessage, useApiAction } from "./use-api-action";
 
 export interface MemberDialogProps {
@@ -120,7 +121,15 @@ function MemberDialogBody({ member, overview, viewer, units, onClose, reload }: 
       }}
     >
       {!canEdit && <p className="text-ink/75">Only admins can change other members.</p>}
-      <MemberForm draft={draft} onChange={edit} units={units} slots={slots} errors={shown} disabled={!canEdit || saving.busy} />
+      <MemberForm
+        draft={draft}
+        onChange={edit}
+        units={units}
+        slots={slots}
+        errors={shown}
+        disabled={!canEdit || saving.busy}
+        targetsExtra={canEdit && <SuggestTargets draft={draft} onApply={edit} units={units} disabled={saving.busy} />}
+      />
       {showAdminSwitch && (
         <Switch
           label="Admin"

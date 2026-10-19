@@ -5,7 +5,7 @@ import { RadioGroup } from "@/components/ui/radio-group";
 import { Select } from "@/components/ui/select";
 import { TextField } from "@/components/ui/text-field";
 import { FieldError } from "@/components/ui/field-parts";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 import { cmToFeetInches, kgToLb } from "@/lib/units";
 import { HEIGHT_CM_RANGE, WEIGHT_KG_RANGE } from "@/modules/member/member-schema";
 import { DEFAULT_UNITS, type Units } from "@/modules/user-preference/user-preference-schema";
@@ -24,6 +24,11 @@ interface PartProps {
   disabled?: boolean;
   // The signed-in user's units for height and weight.
   units?: Units;
+}
+
+interface DetailsProps extends PartProps {
+  // Shown right after the target fields (the suggest-targets button and panel).
+  targetsExtra?: ReactNode;
 }
 
 // Name, sex and age band: the fields onboarding asks for. For your own entry (`self`) it asks the date of birth instead.
@@ -78,7 +83,7 @@ function heightHint({ heightUnit }: Units): string {
 }
 
 // Date of birth, the daily targets, and the body details the diet calculator uses. These only the household settings offer.
-export function MemberDetailsFields({ draft, onChange, errors = {}, disabled, units = DEFAULT_UNITS }: PartProps) {
+export function MemberDetailsFields({ draft, onChange, errors = {}, disabled, units = DEFAULT_UNITS, targetsExtra }: DetailsProps) {
   const heightErrorId = useId();
   const weightUnit = units.weightUnit;
   const [weightMin, weightMax] =
@@ -117,6 +122,7 @@ export function MemberDetailsFields({ draft, onChange, errors = {}, disabled, un
         error={errors.proteinTargetG}
         disabled={disabled}
       />
+      {targetsExtra}
       {units.heightUnit === "cm" ? (
         <TextField
           label="Height (cm)"
@@ -220,14 +226,15 @@ export function MemberSlotFields({ draft, onChange, slots, legend = "Eats in", e
 
 export interface MemberFormProps extends PartProps {
   slots: SlotChoice[];
+  targetsExtra?: ReactNode;
 }
 
 // The whole member form, as the household settings use it.
-export function MemberForm({ slots, ...part }: MemberFormProps) {
+export function MemberForm({ slots, targetsExtra, ...part }: MemberFormProps) {
   return (
     <>
       <MemberBasicsFields {...part} />
-      <MemberDetailsFields {...part} />
+      <MemberDetailsFields {...part} targetsExtra={targetsExtra} />
       <MemberSlotFields {...part} slots={slots} />
     </>
   );

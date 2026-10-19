@@ -77,7 +77,7 @@ function numberOrNull(text: string): number | null {
 const NOT_A_NUMBER = "Use a number";
 
 // The stored height in cm from what was typed. Imperial display rounds to whole inches, so an untouched height keeps its stored value instead of drifting on every save.
-function heightToCm(draft: MemberDraft, units: Units, stored?: Stored): { cm: number | null; error?: string } {
+export function heightToCm(draft: MemberDraft, units: Units, stored?: Stored): { cm: number | null; error?: string } {
   if (stored?.heightCm != null) {
     const shown = heightTexts(stored.heightCm, units);
     if (shown.height === draft.height.trim() && shown.heightInches === draft.heightInches.trim()) return { cm: stored.heightCm };
@@ -95,7 +95,7 @@ function heightToCm(draft: MemberDraft, units: Units, stored?: Stored): { cm: nu
   return { cm: feetInchesToCm(feet ?? 0, inches ?? 0) };
 }
 
-function weightToKg(draft: MemberDraft, units: Units, stored?: Stored): { kg: number | null; error?: string } {
+export function weightToKg(draft: MemberDraft, units: Units, stored?: Stored): { kg: number | null; error?: string } {
   if (stored?.weightKg != null && weightText(stored.weightKg, units) === draft.weight.trim()) return { kg: stored.weightKg };
   const weight = numberOrNull(draft.weight);
   if (Number.isNaN(weight)) return { kg: null, error: NOT_A_NUMBER };

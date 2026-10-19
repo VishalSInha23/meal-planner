@@ -30,3 +30,7 @@ Energy requirement equations of the US Dietary Reference Intakes, with height in
 - Activity factor: sedentary 1.2, light 1.375, moderate 1.55, active 1.725, very active 1.9. Energy = BMR × factor.
 - Goal: lose is energy × 0.8 but never below BMR, maintain is × 1, gain is × 1.1.
 - Protein in g per kg: sedentary 0.8, light 1.0, moderate 1.2, active 1.4, very active 1.6; plus 0.2 for lose or gain (so at most 1.8).
+
+## Where it is
+
+The calculator is `src/lib/nutrition/target-calculator.ts`. In the member dialog (household settings), an icon button "Suggest targets" next to the kcal and protein target fields opens a panel inside the same dialog, shown to whoever may edit that member. The panel uses the sex, age, height, weight, activity level and goal currently entered in the form; anything missing is asked for in the panel, in the user's units, and nothing is assumed. Once everything is present it shows the kcal and protein, the steps, and the note above. Under 3 it shows the under-3 message instead, and an age taken from a band for someone under 18 adds a hint to enter a date of birth. "Apply suggested targets" fills the kcal and protein target fields and the inputs typed in the panel into the form; nothing is saved until the form is saved.
