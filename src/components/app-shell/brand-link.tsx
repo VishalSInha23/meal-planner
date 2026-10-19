@@ -2,17 +2,28 @@ import Image from "next/image";
 import Link from "next/link";
 import { brand } from "@/config/generated/brand";
 
-export function BrandLink({ className = "" }: { className?: string }) {
-  const showIcon = brand.headerDisplay !== "text";
-  const showText = brand.headerDisplay !== "icon";
+const showIcon = brand.headerDisplay !== "text";
+const showText = brand.headerDisplay !== "icon";
+
+export interface BrandMarkProps {
+  size?: number;
+  textClassName?: string;
+}
+
+// The brand as configured: icon, name, or both. The name is always there for screen readers.
+export function BrandMark({ size = 40, textClassName = "text-xl" }: BrandMarkProps) {
   return (
-    <Link
-      href="/plan"
-      aria-label={showText ? undefined : brand.name}
-      className={`flex min-h-11 items-center gap-2 rounded-md ${className}`}
-    >
-      {showIcon && <Image src={brand.icon} alt="" width={32} height={32} unoptimized />}
-      {showText && <span className="font-serif text-xl font-semibold">{brand.name}</span>}
+    <span className="flex items-center gap-2">
+      {showIcon && <Image src={brand.icon} alt="" width={size} height={size} unoptimized />}
+      <span className={showText ? `font-serif font-semibold ${textClassName}` : "sr-only"}>{brand.name}</span>
+    </span>
+  );
+}
+
+export function BrandLink({ className = "" }: { className?: string }) {
+  return (
+    <Link href="/plan" className={`flex min-h-11 items-center rounded-md ${className}`}>
+      <BrandMark />
     </Link>
   );
 }

@@ -1,7 +1,7 @@
 {
   "name": "Ceres",
   "icon": "/brand/icon.svg",
-  "headerDisplay": "text",
+  "headerDisplay": "icon",
 
   "colors": {
     "light": { "ink": "#1F1E1D", "paper": "#F4F3EE" },

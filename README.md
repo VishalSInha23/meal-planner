@@ -28,6 +28,13 @@ DATABASE_URL_TEST=postgres://ceres:ceres@localhost:5432/ceres_test
 
 Then run `npm run db:migrate` to create the tables. The tests migrate the test database themselves. After changing a schema file in `src/db/schema/`, run `npm run db:generate` and commit the new migration in `drizzle/`.
 
+To reset the development database (this deletes all its data), stop the app and run:
+
+```
+psql postgres://ceres:ceres@localhost:5432/ceres -c "drop schema if exists drizzle cascade; drop schema public cascade; create schema public;"
+npm run db:migrate
+```
+
 ### Google sign-in
 
 Once per deployment, in the Google Cloud console (console.cloud.google.com):
@@ -59,7 +66,7 @@ Generate `BETTER_AUTH_SECRET` with `openssl rand -base64 32`. Changing it signs 
 |---|---|
 | `name` | App name, 1 to 40 characters; the page title and the header text |
 | `icon` | Path in `public/` starting with `/` and ending in `.svg` or `.png`; the tab icon and the header icon |
-| `headerDisplay` | `icon`, `text` or `icon_text`: what the header shows for the brand |
+| `headerDisplay` | `icon` (default), `text` or `icon_text`: how the brand shows in the menu, header, sign-in and onboarding pages |
 | `colors.light`, `colors.dark` | `ink` and `paper` as `#rrggbb` for each mode |
 | `fonts.sans`, `fonts.serif` | Font names, installed as a Fontsource package |
 | `fonts.defaultStyle` | `serif` or `sans`: the style used until a user picks one |

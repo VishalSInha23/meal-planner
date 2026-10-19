@@ -49,7 +49,7 @@ drizzle/                generated migrations (committed)
 - Secrets live only in env (`.env`, copied from the committed `.env.example`): `DATABASE_URL`, `DATABASE_URL_TEST`, `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `LOG_LEVEL`, `LOG_ENABLED`, `REQUEST_ID_FORMAT`.
 - Every other configurable value (port, base URL, branding) lives in JSON under `config/`: a committed `<name>.example.json` and a gitignored `<name>.json` copied from it. Loaders validate with zod and fall back to the example file when the real one is missing (a Vercel build only has what is in git), logging which file they used.
 - Never hardcode a value that config provides.
-- Env and config files carry no explanatory comments, only the keys and necessary values, with blank lines grouping related keys so they stay readable. Explanations (what each variable or field means, allowed values) go in the README.
+- Env and config files carry no explanatory comments, only the keys and necessary values, with blank lines grouping related keys so they stay readable. Optional keys sit under an `# Optional` line, each with a one-line comment listing its allowed values. Explanations (what each variable or field means, allowed values) go in the README.
 
 ## API
 
