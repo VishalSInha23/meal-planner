@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { member, memberMealSlot } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
@@ -148,4 +148,16 @@ export async function idsInSlot(householdId: string, mealSlotId: string, db: DbO
     .innerJoin(member, eq(member.id, memberMealSlot.memberId))
     .where(and(eq(member.householdId, householdId), eq(memberMealSlot.mealSlotId, mealSlotId)));
   return rows.map((row) => row.memberId);
+}
+
+// How many members of the household have an account, and how many of those are admins.
+export async function countAccountMembers(
+  householdId: string,
+  db: DbOrTx = getDb(),
+): Promise<{ accounts: number; admins: number }> {
+  const [row] = await db
+    .select({ accounts: count(), admins: count(sql`case when ${member.isAdmin} then 1 end`) })
+    .from(member)
+    .where(and(eq(member.householdId, householdId), isNotNull(member.userId)));
+  return { accounts: row.accounts, admins: row.admins };
 }

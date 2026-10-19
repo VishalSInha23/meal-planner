@@ -5,6 +5,8 @@ export * from "./verification.ts";
 export * from "./user-preference.ts";
 export * from "./household.ts";
 export * from "./member.ts";
+export * from "./join-request.ts";
+export * from "./join-attempt.ts";
 export * from "./meal-slot.ts";
 export * from "./member-meal-slot.ts";
 export * from "./shopping-trip.ts";

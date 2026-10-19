@@ -1,14 +1,68 @@
 import { randomUUID } from "node:crypto";
 import { uniqueViolation } from "@/db/errors";
-import { withTransaction } from "@/db/transaction";
+import { withTransaction, type DbOrTx } from "@/db/transaction";
 import { AppError, badRequest, notFound } from "@/lib/http/errors";
 import * as memberRepository from "../member/member-repository.ts";
 import * as mealSlotRepository from "../meal-slot/meal-slot-repository.ts";
 import * as shoppingTripRepository from "../shopping-trip/shopping-trip-repository.ts";
 import * as repository from "./household-repository.ts";
+import { JOIN_CODE_MAX_TRIES, JOIN_CODE_UNIQUE_CONSTRAINT, newJoinCode } from "./join-code.ts";
 import type { Household, HouseholdOverview, Onboarding, UpdateHousehold } from "./household-schema.ts";
 
 const alreadyInHousehold = () => new AppError(409, "already_in_household", "You already belong to a household");
+
+// Runs the write with a fresh join code, again with another when the code is already taken.
+async function withFreshJoinCode<T>(write: (joinCode: string) => Promise<T>): Promise<T> {
+  for (let tries = 1; ; tries++) {
+    try {
+      return await write(newJoinCode());
+    } catch (error) {
+      if (uniqueViolation(error) !== JOIN_CODE_UNIQUE_CONSTRAINT || tries >= JOIN_CODE_MAX_TRIES) throw error;
+    }
+  }
+}
+
+export async function getJoinCode(householdId: string): Promise<string> {
+  const code = await repository.findJoinCode(householdId);
+  if (!code) throw notFound("Household not found");
+  return code;
+}
+
+// The old code stops working at once.
+export async function regenerateJoinCode(householdId: string): Promise<string> {
+  return withFreshJoinCode(async (joinCode) => {
+    if (!(await repository.setJoinCode(householdId, joinCode))) throw notFound("Household not found");
+    return joinCode;
+  });
+}
+
+export function findHouseholdByJoinCode(joinCode: string): Promise<Household | null> {
+  return repository.findByJoinCode(joinCode);
+}
+
+// Whether the account can leave its household, by the rules in docs/spec/08-joining.md (Leaving and removing).
+// An account without a household can always leave. Throws 409 last_admin for the only admin of a household
+// with other account members, and 409 would_delete_household for the last account member unless confirmed.
+// Returns whether leaving deletes the household.
+export async function checkCanLeave(
+  userId: string,
+  options: { confirmDeleteHousehold?: boolean } = {},
+  db?: DbOrTx,
+): Promise<{ deletesHousehold: boolean }> {
+  const current = await memberRepository.findByUserId(userId, db);
+  if (!current) return { deletesHousehold: false };
+  const { accounts, admins } = await memberRepository.countAccountMembers(current.householdId, db);
+  if (accounts > 1) {
+    if (current.isAdmin && admins === 1) throw new AppError(409, "last_admin", "Make someone else an admin first");
+    return { deletesHousehold: false };
+  }
+  const household = await repository.findById(current.householdId, db);
+  if (!options.confirmDeleteHousehold) {
+    const name = household?.name ?? "your household";
+    throw new AppError(409, "would_delete_household", `This will delete ${name}, with its plan, dishes and members`);
+  }
+  return { deletesHousehold: true };
+}
 
 export async function getHouseholdOverview(householdId: string): Promise<HouseholdOverview> {
   const household = await repository.findById(householdId);
@@ -27,50 +81,55 @@ export async function updateHousehold(householdId: string, input: UpdateHousehol
   return household;
 }
 
+// Inserts everything in one transaction.
+function insertHousehold(userId: string, input: Onboarding, joinCode: string): Promise<string> {
+  return withTransaction(async (tx) => {
+    if (await memberRepository.findByUserId(userId, tx)) throw alreadyInHousehold();
+
+    const household = await repository.insert({ ...input.household, joinCode }, tx);
+    // Ids are made here so that a member's slot positions map to ids without relying on row order.
+    const slots = input.mealSlots.map((slot) => ({ ...slot, id: randomUUID() }));
+    await mealSlotRepository.insertMany(household.id, slots, tx);
+    await shoppingTripRepository.insertMany(household.id, input.shoppingTrips, tx);
+
+    const people = [
+      { ...input.you, isAdmin: true, userId },
+      ...input.members.map((person) => ({ ...person, isAdmin: false, userId: null })),
+    ];
+    for (const { slotPositions, isAdmin, userId: accountId, ...person } of people) {
+      const slotIds = slotPositions.map((position) => {
+        const slot = slots[position];
+        if (!slot) throw badRequest("Some fields are invalid", { slotPositions: "No meal slot at this position" });
+        return slot.id;
+      });
+      const member = await memberRepository.insert(
+        household.id,
+        {
+          ageBand: null,
+          dateOfBirth: null,
+          kcalTarget: null,
+          proteinTargetG: null,
+          heightCm: null,
+          weightKg: null,
+          activityLevel: null,
+          goal: null,
+          ...person,
+          isAdmin,
+          userId: accountId,
+        },
+        tx,
+      );
+      await memberRepository.setSlots(household.id, member.id, slotIds, tx);
+    }
+    return household.id;
+  });
+}
+
 // Creates the household, its slots and trips, the account's member (an admin) and the other members
 // with their slots in one transaction: all of it, or nothing.
 export async function createHousehold(userId: string, input: Onboarding): Promise<HouseholdOverview> {
   try {
-    const householdId = await withTransaction(async (tx) => {
-      if (await memberRepository.findByUserId(userId, tx)) throw alreadyInHousehold();
-
-      const household = await repository.insert(input.household, tx);
-      // Ids are made here so that a member's slot positions map to ids without relying on row order.
-      const slots = input.mealSlots.map((slot) => ({ ...slot, id: randomUUID() }));
-      await mealSlotRepository.insertMany(household.id, slots, tx);
-      await shoppingTripRepository.insertMany(household.id, input.shoppingTrips, tx);
-
-      const people = [
-        { ...input.you, isAdmin: true, userId },
-        ...input.members.map((person) => ({ ...person, isAdmin: false, userId: null })),
-      ];
-      for (const { slotPositions, isAdmin, userId: accountId, ...person } of people) {
-        const slotIds = slotPositions.map((position) => {
-          const slot = slots[position];
-          if (!slot) throw badRequest("Some fields are invalid", { slotPositions: "No meal slot at this position" });
-          return slot.id;
-        });
-        const member = await memberRepository.insert(
-          household.id,
-          {
-            ageBand: null,
-            dateOfBirth: null,
-            kcalTarget: null,
-            proteinTargetG: null,
-            heightCm: null,
-            weightKg: null,
-            activityLevel: null,
-            goal: null,
-            ...person,
-            isAdmin,
-            userId: accountId,
-          },
-          tx,
-        );
-        await memberRepository.setSlots(household.id, member.id, slotIds, tx);
-      }
-      return household.id;
-    });
+    const householdId = await withFreshJoinCode((joinCode) => insertHousehold(userId, input, joinCode));
     return await getHouseholdOverview(householdId);
   } catch (error) {
     // Two onboarding requests at once: the unique account on member lets only one win.

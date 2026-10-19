@@ -8,6 +8,7 @@ export const household = pgTable(
     name: text("name").notNull(),
     // 0 = Sunday ... 6 = Saturday.
     weekStartDay: integer("week_start_day").notNull(),
+    joinCode: text("join_code").notNull().unique(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()

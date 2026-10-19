@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { NextRequest } from "next/server";
 import { getDb } from "@/db/client";
 import { household, mealSlot, member, memberMealSlot, user } from "@/db/schema";
+import { newJoinCode } from "@/modules/household/join-code";
 import type { Onboarding } from "@/modules/household/household-schema";
 
 export async function createUser(id: string) {
@@ -12,6 +13,7 @@ export async function createUser(id: string) {
 
 export interface Fixture {
   householdId: string;
+  joinCode: string;
   slotIds: string[];
   adminMemberId: string;
   adminUserId: string;
@@ -22,9 +24,10 @@ export async function createHouseholdFixture(tag: string): Promise<Fixture> {
   const db = getDb();
   const adminUserId = `admin-${tag}`;
   await createUser(adminUserId);
+  const joinCode = newJoinCode();
   const [{ id: householdId }] = await db
     .insert(household)
-    .values({ name: `House ${tag}`, weekStartDay: 1 })
+    .values({ name: `House ${tag}`, weekStartDay: 1, joinCode })
     .returning({ id: household.id });
   const slots = await db
     .insert(mealSlot)
@@ -39,7 +42,7 @@ export async function createHouseholdFixture(tag: string): Promise<Fixture> {
     .values({ householdId, userId: adminUserId, name: "Admin", sex: "female", ageBand: "36-40", isAdmin: true })
     .returning({ id: member.id });
   await db.insert(memberMealSlot).values(slotIds.map((mealSlotId) => ({ memberId: adminMemberId, mealSlotId })));
-  return { householdId, slotIds, adminMemberId, adminUserId };
+  return { householdId, joinCode, slotIds, adminMemberId, adminUserId };
 }
 
 // A second member with an account in the household, without admin rights.
