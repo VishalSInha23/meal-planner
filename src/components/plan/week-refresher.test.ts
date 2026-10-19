@@ -16,10 +16,13 @@ function setup(seconds = 10) {
   const env: RefresherEnv = {
     fetch: (_url, init) =>
       new Promise<Response>((resolve, reject) => {
+        init.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
         calls.push({ init, respond: (response) => (response instanceof Error ? reject(response) : resolve(response)) });
       }),
     setInterval: (callback, ms) => setInterval(callback, ms),
     clearInterval: (handle) => clearInterval(handle as ReturnType<typeof setInterval>),
+    setTimeout: (callback, ms) => setTimeout(callback, ms),
+    clearTimeout: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
     isVisible: () => visible,
     onWake: (listener) => {
       wake = listener;
@@ -97,7 +100,7 @@ describe("createWeekRefresher", () => {
   it("never has two reloads in flight, and a due reload waits for the running one", async () => {
     const t = setup(10);
     await vi.advanceTimersByTimeAsync(10_000);
-    await vi.advanceTimersByTimeAsync(10_000);
+    t.wake();
     t.wake();
     await flush();
     expect(t.calls).toHaveLength(1);
@@ -169,6 +172,39 @@ describe("createWeekRefresher", () => {
     t.calls[1].respond(new Response(null, { status: 304 }));
     await flush();
     expect(t.last()).toEqual({ week: weekWith("initial"), failed: false });
+  });
+
+  it("aborts a reload that outlasts the refresh interval, fails it, and lets the next one run", async () => {
+    const t = setup(10);
+    let reloaded = false;
+    const reload = t.refresher.reload().then(() => (reloaded = true));
+    await flush();
+    expect(t.calls).toHaveLength(1);
+    expect(t.calls[0].init.signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(t.calls[0].init.signal?.aborted).toBe(true);
+    await reload;
+    expect(reloaded).toBe(true);
+    expect(t.last()).toEqual({ week: weekWith("initial"), failed: true });
+
+    // The interval tick that came due meanwhile was queued behind the stalled reload and now runs.
+    expect(t.calls).toHaveLength(2);
+    t.calls[1].respond(ok("fresh"));
+    await flush();
+    expect(t.last()).toEqual({ week: weekWith("fresh"), failed: false });
+  });
+
+  it("clears the timer of a reload that finishes in time", async () => {
+    const t = setup(10);
+    t.wake();
+    await flush();
+    t.calls[0].respond(ok("one"));
+    await flush();
+    expect(vi.getTimerCount()).toBe(1);
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(t.calls[0].init.signal?.aborted).toBe(false);
+    expect(t.last()).toEqual({ week: weekWith("one"), failed: false });
   });
 
   it("stops when disposed, and releases waiting reloads", async () => {

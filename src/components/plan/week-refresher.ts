@@ -4,6 +4,8 @@ export interface RefresherEnv {
   fetch: (url: string, init: RequestInit) => Promise<Response>;
   setInterval: (callback: () => void, ms: number) => unknown;
   clearInterval: (handle: unknown) => void;
+  setTimeout: (callback: () => void, ms: number) => unknown;
+  clearTimeout: (handle: unknown) => void;
   isVisible: () => boolean;
   // Calls the listener when the page becomes visible or the window gets focus. Returns the way to stop.
   onWake: (listener: () => void) => () => void;
@@ -26,6 +28,8 @@ export function browserRefresherEnv(): RefresherEnv {
     fetch: (url, init) => fetch(url, init),
     setInterval: (callback, ms) => window.setInterval(callback, ms),
     clearInterval: (handle) => window.clearInterval(handle as number),
+    setTimeout: (callback, ms) => window.setTimeout(callback, ms),
+    clearTimeout: (handle) => window.clearTimeout(handle as number),
     isVisible: () => document.visibilityState === "visible",
     onWake: (listener) => {
       const onVisibility = () => {
@@ -66,15 +70,20 @@ export function createWeekRefresher(
     onState(state);
   }
 
+  // A reload slower than the refresh interval is out of date anyway, so it is aborted and counts as failed.
   async function fetchWeek(): Promise<Outcome> {
+    const controller = new AbortController();
+    const timer = env.setTimeout(() => controller.abort(), refreshSeconds * 1000);
     try {
       const headers: Record<string, string> = etag ? { "if-none-match": etag } : {};
-      const response = await env.fetch(`/api/weeks/${state.week.weekStart}`, { cache: "no-store", headers });
+      const response = await env.fetch(`/api/weeks/${state.week.weekStart}`, { cache: "no-store", headers, signal: controller.signal });
       if (response.status === 304) return { kind: "unchanged" };
       if (!response.ok) return { kind: "failed" };
       return { kind: "week", week: (await response.json()) as Week, etag: response.headers.get("etag") };
     } catch {
       return { kind: "failed" };
+    } finally {
+      env.clearTimeout(timer);
     }
   }
 
