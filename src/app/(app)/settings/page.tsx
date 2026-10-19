@@ -1,3 +1,5 @@
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { AppearanceSettings } from "@/components/appearance/appearance-settings";
 import { Card } from "@/components/ui/card";
@@ -11,6 +13,15 @@ export default async function SettingsPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card title="Appearance">
           <AppearanceSettings />
+        </Card>
+        <Card title="Household">
+          <Link
+            href="/settings/household"
+            className="flex min-h-11 items-center justify-between gap-2 rounded-md border-[1.5px] border-ink px-3 active:bg-ink/15"
+          >
+            Household settings
+            <ChevronRight size={20} aria-hidden="true" />
+          </Link>
         </Card>
         <Card title="Account" actions={<SignOutButton />}>
           <p>

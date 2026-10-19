@@ -3,10 +3,10 @@ import { AppHeader } from "@/components/app-shell/app-header";
 import { Sidebar } from "@/components/app-shell/sidebar";
 import { AppearanceProvider } from "@/components/appearance/appearance-provider";
 import { readAppearance } from "@/lib/appearance/read-appearance";
-import { requireUser } from "@/lib/auth/session";
+import { requireMember } from "@/lib/auth/session";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  await requireUser();
+  await requireMember();
   const appearance = await readAppearance();
   return (
     <AppearanceProvider initial={appearance}>

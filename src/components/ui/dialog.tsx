@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { Dialog as RadixDialog } from "radix-ui";
-import { Button } from "./button";
+import { X } from "lucide-react";
+import { IconButton } from "./icon-button";
 
 export const Dialog = RadixDialog.Root;
 export const DialogTrigger = RadixDialog.Trigger;
@@ -23,12 +24,16 @@ export function DialogContent({ title, description, children }: DialogContentPro
         {...(description ? {} : { "aria-describedby": undefined })}
         className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90dvh] flex-col gap-4 overflow-y-auto rounded-t-lg border-[1.5px] border-ink bg-paper p-6 text-ink md:inset-auto md:top-1/2 md:left-1/2 md:w-full md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg"
       >
-        <RadixDialog.Title className="text-xl font-semibold">{title}</RadixDialog.Title>
+        <div className="flex items-start justify-between gap-4">
+          <RadixDialog.Title className="text-xl font-semibold">{title}</RadixDialog.Title>
+          <RadixDialog.Close asChild>
+            <IconButton label="Close" variant="ghost" className="-mt-2 -mr-2">
+              <X aria-hidden="true" />
+            </IconButton>
+          </RadixDialog.Close>
+        </div>
         {description && <RadixDialog.Description className="text-ink/75">{description}</RadixDialog.Description>}
         {children}
-        <RadixDialog.Close asChild>
-          <Button variant="secondary">Close</Button>
-        </RadixDialog.Close>
       </RadixDialog.Content>
     </RadixDialog.Portal>
   );
