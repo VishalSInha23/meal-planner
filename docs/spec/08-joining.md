@@ -25,7 +25,7 @@ An account belongs to at most one household. People join an existing household w
   - **Link to a member without an account**: the asker takes over that member. The member's name, sex and date of birth are replaced by the asker's (the age band is cleared); everything else stays: meal slots, targets, height, weight, activity, goal, and every meal the member is ticked for.
   - **Add as a new member**: a new member with the asker's details, eating in every meal slot, not an admin.
 - An admin can decline a request. The asker sees "Your request to join <household> was declined" until they make a new request or dismiss it.
-- Approving is checked again at that moment: the request must still be pending, and the asker must be able to leave their current household (see Leaving). If not, it is refused with the reason and the request stays pending.
+- Approving is checked again at that moment: the request must still be pending, and the asker must be able to leave their current household (see Leaving). If not, it is refused with the reason and the request stays pending. It is also refused when the asker has joined this household in the meantime (409 `already_in_household`) and when the member to link has gained an account (409 `member_has_account`). A request that is no longer pending (declined, cancelled or approved by another admin) is refused with 409 `request_not_pending`; when two admins approve the same request at once, exactly one succeeds.
 - On approval, the asker leaves their current household (if any) and joins this one, in one step: there is never a moment where they are in both or in neither.
 
 ## Leaving and removing
@@ -34,5 +34,5 @@ An account belongs to at most one household. People join an existing household w
 - The last admin can't leave while other account members remain ("Make someone else an admin first").
 - When the last account member leaves (or joins another household), the household is deleted with everything in it: members, meal slots, shopping trips, dishes, ingredients, meals, plans and grocery ticks. Leaving asks for confirmation first, naming what will be deleted.
 - Otherwise, leaving removes that member: they disappear from every meal they were ticked for; the household carries on.
-- Admins can remove another account member the same way (they can't remove themselves; they leave instead). The removed account goes back to onboarding.
+- Admins can remove another account member the same way (they can't remove themselves, 409 `use_leave`: they leave instead). The removed account goes back to onboarding.
 - Someone who left or was removed can ask to join again with the code.

@@ -2,6 +2,7 @@ import { withTransaction, type Tx } from "@/db/transaction";
 import { localToday } from "@/lib/time/week";
 import { AppError, adminOnly, badRequest, forbidden, notFound } from "@/lib/http/errors";
 import * as householdRepository from "../household/household-repository.ts";
+import { leaveHousehold } from "../household/household-service.ts";
 import type { Household } from "../household/household-schema.ts";
 import * as mealSlotRepository from "../meal-slot/meal-slot-repository.ts";
 import * as repository from "./member-repository.ts";
@@ -110,10 +111,17 @@ export async function updateMember(actor: Member, id: string, input: UpdateMembe
   });
 }
 
-// Only members without an account can be removed.
-export async function removeMember(householdId: string, id: string): Promise<void> {
+// An admin removes a member. A member with an account leaves like they would themselves (the household's other
+// rules apply), and an admin can't remove themselves.
+export async function removeMember(actor: Member, id: string): Promise<void> {
+  const { householdId } = actor;
   const target = await repository.findInHousehold(householdId, id);
   if (!target) throw notFound("Member not found");
-  if (target.userId) throw new AppError(409, "member_has_account", "A member with an account can't be removed");
+  if (target.userId === actor.userId) throw new AppError(409, "use_leave", "Leave the household instead");
+  if (target.userId) {
+    const targetUserId = target.userId;
+    await withTransaction((tx) => leaveHousehold(tx, targetUserId));
+    return;
+  }
   await repository.remove(householdId, id);
 }

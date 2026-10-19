@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { member, memberMealSlot } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
@@ -160,4 +160,32 @@ export async function countAccountMembers(
     .from(member)
     .where(and(eq(member.householdId, householdId), isNotNull(member.userId)));
   return { accounts: row.accounts, admins: row.admins };
+}
+
+// Locks the household's account members until the transaction ends, so concurrent leaves and removals run one at a time.
+// Rows are locked in id order so two transactions can't wait on each other.
+export async function lockAccountMembers(householdId: string, db: DbOrTx): Promise<void> {
+  await db
+    .select({ id: member.id })
+    .from(member)
+    .where(and(eq(member.householdId, householdId), isNotNull(member.userId)))
+    .orderBy(asc(member.id))
+    .for("update");
+}
+
+// Gives a member without an account to the account, replacing name, sex and date of birth and clearing the age band.
+// Returns null when the household has no such member or it has an account by now.
+export async function giveToAccount(
+  householdId: string,
+  id: string,
+  userId: string,
+  values: { name: string; sex: "male" | "female"; dateOfBirth: string },
+  db: DbOrTx,
+): Promise<Member | null> {
+  const [row] = await db
+    .update(member)
+    .set({ ...values, userId, ageBand: null })
+    .where(and(eq(member.householdId, householdId), eq(member.id, id), isNull(member.userId)))
+    .returning();
+  return row ? toMember(row) : null;
 }

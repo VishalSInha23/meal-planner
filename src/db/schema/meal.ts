@@ -14,7 +14,7 @@ export const meal = pgTable(
     // A slot that meals use can't be deleted.
     mealSlotId: uuid("meal_slot_id")
       .notNull()
-      .references(() => mealSlot.id, { onDelete: "restrict" }),
+      .references(() => mealSlot.id, { onDelete: "cascade" }),
     updatedAt: timestamp("updated_at")
       .notNull()
       .defaultNow()

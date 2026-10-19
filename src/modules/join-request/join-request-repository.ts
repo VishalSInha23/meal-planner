@@ -1,8 +1,8 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { household, joinRequest } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
-import type { JoinRequest, MyJoinRequest } from "./join-request-schema.ts";
+import type { DecidedJoinRequest, JoinRequest, MyJoinRequest } from "./join-request-schema.ts";
 
 type Row = typeof joinRequest.$inferSelect;
 
@@ -76,5 +76,40 @@ export async function dismissDeclined(userId: string, db: DbOrTx = getDb()): Pro
     .set({ status: "dismissed" })
     .where(and(eq(joinRequest.userId, userId), eq(joinRequest.status, "declined")))
     .returning({ id: joinRequest.id });
+  return rows.length > 0;
+}
+
+// Pending requests to the household, oldest first.
+export async function listPendingByHousehold(householdId: string, db: DbOrTx = getDb()): Promise<JoinRequest[]> {
+  const rows = await db
+    .select()
+    .from(joinRequest)
+    .where(and(eq(joinRequest.householdId, householdId), eq(joinRequest.status, "pending")))
+    .orderBy(asc(joinRequest.createdAt), asc(joinRequest.id));
+  return rows.map(toJoinRequest);
+}
+
+// Moves a pending request of the household to the new status. The condition is the claim: of two decisions at once
+// only one updates the row. Returns null when the household has no pending request with this id.
+export async function decidePending(
+  householdId: string,
+  id: string,
+  status: "approved" | "declined",
+  decidedByMemberId: string,
+  db: DbOrTx,
+): Promise<DecidedJoinRequest | null> {
+  const [row] = await db
+    .update(joinRequest)
+    .set({ status, decidedAt: new Date(), decidedByMemberId })
+    .where(and(eq(joinRequest.householdId, householdId), eq(joinRequest.id, id), eq(joinRequest.status, "pending")))
+    .returning();
+  return row ? { ...toJoinRequest(row), userId: row.userId } : null;
+}
+
+export async function existsInHousehold(householdId: string, id: string, db: DbOrTx): Promise<boolean> {
+  const rows = await db
+    .select({ id: joinRequest.id })
+    .from(joinRequest)
+    .where(and(eq(joinRequest.householdId, householdId), eq(joinRequest.id, id)));
   return rows.length > 0;
 }

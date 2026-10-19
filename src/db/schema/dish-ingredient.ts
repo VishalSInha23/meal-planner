@@ -11,7 +11,7 @@ export const dishIngredient = pgTable(
     // An ingredient in use can't be deleted.
     ingredientId: uuid("ingredient_id")
       .notNull()
-      .references(() => ingredient.id, { onDelete: "restrict" }),
+      .references(() => ingredient.id, { onDelete: "cascade" }),
   },
   (table) => [primaryKey({ columns: [table.dishId, table.ingredientId] }), index("dish_ingredient_ingredient_id_idx").on(table.ingredientId)],
 );

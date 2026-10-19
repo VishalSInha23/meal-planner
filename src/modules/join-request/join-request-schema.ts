@@ -39,3 +39,21 @@ export interface JoinRequest {
 export interface MyJoinRequest extends JoinRequest {
   householdName: string;
 }
+
+// A request as the deciding admin's transaction sees it, with the account that asked.
+export interface DecidedJoinRequest extends JoinRequest {
+  userId: string;
+}
+
+export const approveJoinRequestSchema = z.object({ linkMemberId: z.uuid().optional() }).strict();
+
+export type ApproveJoinRequest = z.infer<typeof approveJoinRequestSchema>;
+
+// A pending request as an admin sees it.
+export interface PendingJoinRequest {
+  id: string;
+  name: string;
+  sex: "male" | "female";
+  ageYears: number;
+  createdAt: Date;
+}

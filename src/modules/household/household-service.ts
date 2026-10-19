@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { uniqueViolation } from "@/db/errors";
-import { withTransaction, type DbOrTx } from "@/db/transaction";
+import { withTransaction, type DbOrTx, type Tx } from "@/db/transaction";
 import { AppError, badRequest, notFound } from "@/lib/http/errors";
 import * as memberRepository from "../member/member-repository.ts";
 import * as mealSlotRepository from "../meal-slot/meal-slot-repository.ts";
 import * as shoppingTripRepository from "../shopping-trip/shopping-trip-repository.ts";
 import * as repository from "./household-repository.ts";
 import { JOIN_CODE_MAX_TRIES, JOIN_CODE_UNIQUE_CONSTRAINT, newJoinCode } from "./join-code.ts";
-import type { Household, HouseholdOverview, Onboarding, UpdateHousehold } from "./household-schema.ts";
+import type { Household, HouseholdOverview, LeaveHousehold, Onboarding, UpdateHousehold } from "./household-schema.ts";
 
 const alreadyInHousehold = () => new AppError(409, "already_in_household", "You already belong to a household");
 
@@ -62,6 +62,35 @@ export async function checkCanLeave(
     throw new AppError(409, "would_delete_household", `This will delete ${name}, with its plan, dishes and members`);
   }
   return { deletesHousehold: true };
+}
+
+// The account leaves its household: the household is deleted with everything in it when the account is its last
+// account member (only with the confirmation), otherwise just the member is deleted. Runs in the caller's transaction
+// so that joining another household can be one step. The household's account members are locked first, so two people
+// leaving at once can't both pass the last-admin check. Returns whether the household was deleted.
+export async function leaveHousehold(
+  tx: Tx,
+  userId: string,
+  options: { confirmDeleteHousehold?: boolean } = {},
+): Promise<{ deletedHousehold: boolean }> {
+  const first = await memberRepository.findByUserId(userId, tx);
+  if (!first) return { deletedHousehold: false };
+  await memberRepository.lockAccountMembers(first.householdId, tx);
+  // The member may be gone by the time the lock is ours, so the checks read it again.
+  const current = await memberRepository.findByUserId(userId, tx);
+  if (!current) return { deletedHousehold: false };
+
+  const { deletesHousehold } = await checkCanLeave(userId, options, tx);
+  if (deletesHousehold) {
+    await repository.remove(current.householdId, tx);
+  } else {
+    await memberRepository.remove(current.householdId, current.id, tx);
+  }
+  return { deletedHousehold: deletesHousehold };
+}
+
+export function leave(userId: string, input: LeaveHousehold): Promise<{ deletedHousehold: boolean }> {
+  return withTransaction((tx) => leaveHousehold(tx, userId, input));
 }
 
 export async function getHouseholdOverview(householdId: string): Promise<HouseholdOverview> {

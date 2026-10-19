@@ -19,7 +19,7 @@ export const PATCH = route<Params>(
 export const DELETE = route<Params>(
   async (_request, { params }) => {
     const admin = await requireAdmin();
-    await removeMember(admin.householdId, await idParam(params));
+    await removeMember(admin, await idParam(params));
     return new Response(null, { status: 204 });
   },
   { route: "/api/members/[id]" },

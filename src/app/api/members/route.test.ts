@@ -289,15 +289,19 @@ describe("/api/members", () => {
     expect((await patch(fixture.adminMemberId, { isAdmin: false })).status).toBe(200);
   });
 
-  it("answers 409 member_has_account when removing a member with an account", async () => {
+  it("lets an admin remove another account member, who then has no household, but not themselves", async () => {
     const fixture = await createHouseholdFixture("a");
     const plain = await addAccountMember(fixture.householdId, fixture.slotIds);
     signInAs(fixture.adminUserId);
-    for (const id of [plain.memberId, fixture.adminMemberId]) {
-      const response = await del(id);
-      expect(response.status).toBe(409);
-      expect((await response.json()).error.code).toBe("member_has_account");
-    }
+
+    const self = await del(fixture.adminMemberId);
+    expect(self.status).toBe(409);
+    expect((await self.json()).error).toMatchObject({ code: "use_leave", message: "Leave the household instead" });
     expect(await getDb().select().from(member)).toHaveLength(2);
+
+    const response = await del(plain.memberId);
+    expect(response.status).toBe(204);
+    expect(await getDb().select().from(member).where(eq(member.userId, plain.userId))).toHaveLength(0);
+    expect(await getDb().select().from(member)).toHaveLength(1);
   });
 });

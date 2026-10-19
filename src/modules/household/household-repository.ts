@@ -44,3 +44,9 @@ export async function findByJoinCode(joinCode: string, db: DbOrTx = getDb()): Pr
   const [row] = await db.select().from(household).where(eq(household.joinCode, joinCode));
   return row ? toHousehold(row) : null;
 }
+
+// Deletes the household with everything in it. Returns false when there is no such household.
+export async function remove(householdId: string, db: DbOrTx = getDb()): Promise<boolean> {
+  const rows = await db.delete(household).where(eq(household.id, householdId)).returning({ id: household.id });
+  return rows.length > 0;
+}
