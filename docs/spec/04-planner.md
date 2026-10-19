@@ -14,7 +14,7 @@
   - **Who eats it**: tick or untick each household member for each dish. Any member can be ticked, including one who doesn't usually eat in that slot. A dish nobody is ticked for stays in the meal but counts for nobody and adds nothing to the grocery list.
   - **Remove** a dish from the meal.
 - A dish can be in a meal only once. Example, Thursday lunch: rice and dal ticked for the parents, cauliflower curry for everyone, roti only for the son.
-- Every change is saved straight away as its own small change; there is no save button. If two people edit at the same time, each change is kept, and when both change the same thing the later one wins. Changes made by someone else appear after a refresh. Adding a dish someone else has just added says it is already in the meal and refreshes the meal; editing something someone else has just removed says so and refreshes.
+- Every change is saved straight away as its own small change; there is no save button. If two people edit at the same time, each change is kept, and when both change the same thing the later one wins. While the planner is open and visible it shows other people's changes within `plannerRefreshSeconds` (app config), and at once when you come back to it. Adding a dish someone else has just added says it is already in the meal and refreshes the meal; editing something someone else has just removed says so and refreshes.
 
 ## Daily nutrition
 

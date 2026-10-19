@@ -10,24 +10,27 @@ import { apiRequest } from "@/lib/http/api-client";
 import { addDaysTo, weekOffset } from "@/lib/time/week";
 import type { WeekPlanned } from "@/modules/meal/meal-schema";
 import { plannedLabel, weekRange, weekTag } from "./plan-format";
-import { useWeekRefresh } from "./use-week-refresh";
+import { useReloadAfterChange } from "./use-week";
 
 export interface WeekHeaderProps {
   weekStart: string;
   // The first day of the week that holds today.
   currentWeekStart: string;
   planned: WeekPlanned | null;
+  // The last background reload failed.
+  refreshFailed: boolean;
+  reload: () => Promise<void>;
 }
 
-export function WeekHeader({ weekStart, currentWeekStart, planned }: WeekHeaderProps) {
+export function WeekHeader({ weekStart, currentWeekStart, planned, refreshFailed, reload }: WeekHeaderProps) {
   const marking = useApiAction();
-  const { pending, refresh } = useWeekRefresh();
+  const { pending, reloadNow } = useReloadAfterChange(reload);
   const message = rowMessage(marking.failure);
   const path = `/api/weeks/${weekStart}/planned`;
 
   async function toggle() {
     const result = await marking.run(() => apiRequest(planned ? "DELETE" : "PUT", path));
-    if (result.ok) refresh();
+    if (result.ok) await reloadNow();
   }
 
   return (
@@ -62,6 +65,7 @@ export function WeekHeader({ weekStart, currentWeekStart, planned }: WeekHeaderP
         )}
       </div>
       {message && <FieldError id="week-planned-error">{message}</FieldError>}
+      {refreshFailed && <p className="text-ink/75">Couldn’t refresh, trying again</p>}
     </div>
   );
 }

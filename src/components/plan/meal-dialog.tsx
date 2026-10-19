@@ -12,7 +12,7 @@ import type { Meal } from "@/modules/meal/meal-schema";
 import type { MealSlot } from "@/modules/meal-slot/meal-slot-schema";
 import { changeFailure, longDay } from "./plan-format";
 import { useDishSearch } from "./use-dish-search";
-import { useWeekRefresh } from "./use-week-refresh";
+import { useReloadAfterChange } from "./use-week";
 
 export interface MealMember {
   id: string;
@@ -25,6 +25,7 @@ export interface MealDialogProps {
   // The meal as last loaded, or undefined while nothing is planned.
   meal: Meal | undefined;
   members: MealMember[];
+  reload: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -34,14 +35,14 @@ function withoutKey(record: Readonly<Record<string, string>>, key: string): Reco
   return Object.fromEntries(Object.entries(record).filter(([name]) => name !== key));
 }
 
-export function MealDialog({ date, slot, meal, members, onClose }: MealDialogProps) {
+export function MealDialog({ date, slot, meal, members, reload, onClose }: MealDialogProps) {
   const searchId = useId();
   const [text, setText] = useState("");
   const [version, setVersion] = useState(0);
   const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
   const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
   const search = useDishSearch(text, version);
-  const { pending, refresh } = useWeekRefresh();
+  const { pending, reloadNow } = useReloadAfterChange(reload);
   const typed = text.trim();
   const exact = search.dishes.some((dish) => dish.name.toLowerCase() === typed.toLowerCase());
   const dishes = meal?.dishes ?? [];
@@ -58,12 +59,12 @@ export function MealDialog({ date, slot, meal, members, onClose }: MealDialogPro
       return next;
     });
     if (result.ok) {
-      refresh();
+      void reloadNow();
       return true;
     }
     const failure = changeFailure(result, target);
     setErrors((previous) => ({ ...previous, [errorKey]: failure.message }));
-    if (failure.refresh) refresh();
+    if (failure.refresh) void reloadNow();
     return false;
   }
 

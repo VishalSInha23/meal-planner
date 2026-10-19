@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
@@ -10,6 +11,7 @@ vi.mock("@/lib/auth/auth", () => ({ getAuth: () => ({ api: { getSession } }) }))
 
 const signInAs = (id: string) => getSession.mockResolvedValue({ user: { id, name: id, email: `${id}@example.com` } });
 
+import { listMembers } from "@/modules/member/member-service";
 import { dish, meal, mealDish, mealDishMember, member, memberMealSlot, weekPlan } from "@/db/schema";
 import { DELETE as deleteSlot } from "../meal-slots/[id]/route.ts";
 import { POST as postMealDish } from "../meal-dishes/route.ts";
@@ -25,6 +27,10 @@ const THURSDAY = "2026-10-22";
 
 const week = (weekStart: string) =>
   getWeek(jsonRequest("GET", `/api/weeks/${weekStart}`), { params: Promise.resolve({ weekStart }) } as never);
+const weekIfNoneMatch = (weekStart: string, etag: string) =>
+  getWeek(new NextRequest(`http://localhost/api/weeks/${weekStart}`, { headers: { "if-none-match": etag } }), {
+    params: Promise.resolve({ weekStart }),
+  } as never);
 const putPlanned = (weekStart: string) =>
   plan(jsonRequest("PUT", `/api/weeks/${weekStart}/planned`), { params: Promise.resolve({ weekStart }) } as never);
 const deletePlanned = (weekStart: string) =>
@@ -133,6 +139,62 @@ describe("/api/weeks and /api/meal-dishes", () => {
     expect(body.meals).toEqual([]);
     expect(body.planned).toBeNull();
     expect(body.nutrition).toHaveLength(21);
+  });
+
+  it("includes the members with their targets in the member list order", async () => {
+    const s = await signedIn();
+    const body = await (await week(MONDAY)).json();
+    const listed = await listMembers(s.householdId);
+    expect(body.members.map((item: { id: string }) => item.id)).toEqual(listed.map((item) => item.id));
+    expect(body.members).toHaveLength(3);
+    expect(body.members.find((item: { id: string }) => item.id === s.adminMemberId)).toEqual({
+      id: s.adminMemberId,
+      name: "Admin",
+      kcalTarget: 2000,
+      proteinTargetG: 60,
+    });
+    expect(body.members.find((item: { id: string }) => item.id === s.sonId)).toEqual({ id: s.sonId, name: "Son", kcalTarget: null, proteinTargetG: null });
+  });
+
+  describe("ETag", () => {
+    const etagOf = async () => {
+      const response = await week(MONDAY);
+      expect(response.status).toBe(200);
+      return response.headers.get("etag")!;
+    };
+
+    it("is the same for two reads with no change, and a matching If-None-Match gets 304 with no body", async () => {
+      await signedIn();
+      const etag = await etagOf();
+      expect(etag).toMatch(/^"[0-9a-f]{64}"$/);
+      expect(await etagOf()).toBe(etag);
+      const response = await weekIfNoneMatch(MONDAY, etag);
+      expect(response.status).toBe(304);
+      expect(await response.text()).toBe("");
+      expect(response.headers.get("etag")).toBe(etag);
+      expect((await weekIfNoneMatch(MONDAY, '"stale"')).status).toBe(200);
+    });
+
+    it("changes after a tick, a dish rename, a target change and a new member", async () => {
+      const s = await signedIn();
+      const added = await (await addDish({ date: THURSDAY, mealSlotId: s.lunch, dishId: s.dishes.rice })).json();
+      const seen = [await etagOf()];
+      const expectNew = async () => {
+        const etag = await etagOf();
+        expect(seen).not.toContain(etag);
+        seen.push(etag);
+        expect((await weekIfNoneMatch(MONDAY, seen[seen.length - 2])).status).toBe(200);
+      };
+
+      await tick(added.id, s.sonId, { eats: true });
+      await expectNew();
+      await getDb().update(dish).set({ name: "Brown rice" }).where(eq(dish.id, s.dishes.rice));
+      await expectNew();
+      await getDb().update(member).set({ kcalTarget: 2200 }).where(eq(member.id, s.adminMemberId));
+      await expectNew();
+      await getDb().insert(member).values({ householdId: s.householdId, name: "Newcomer", sex: "female", ageBand: "36-40" });
+      await expectNew();
+    });
   });
 
   it("adds a dish ticked for exactly the members who eat in the slot", async () => {

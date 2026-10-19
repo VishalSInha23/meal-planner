@@ -10,6 +10,7 @@ const appConfigSchema = z.object({
   baseUrl: z
     .url({ protocol: /^https?$/ })
     .refine((value) => !value.endsWith("/"), "Must not end with a slash"),
+  plannerRefreshSeconds: z.number().int().min(5).max(300),
 });
 
 export type AppConfig = z.infer<typeof appConfigSchema>;

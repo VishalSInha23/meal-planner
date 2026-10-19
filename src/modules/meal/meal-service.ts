@@ -42,7 +42,8 @@ export async function getWeek(householdId: string, weekStart: string): Promise<W
     members,
     rows.map((row) => ({ date: row.date, kcal: row.kcalPerServing, proteinG: row.proteinGPerServing, memberIds: row.memberIds })),
   );
-  return { weekStart, dates, mealSlots, meals: ordered, planned, nutrition };
+  const weekMembers = members.map(({ id, name, kcalTarget, proteinTargetG }) => ({ id, name, kcalTarget, proteinTargetG }));
+  return { weekStart, dates, mealSlots, meals: ordered, planned, members: weekMembers, nutrition };
 }
 
 // The dish is ticked for every member who eats in the slot. A dish name that is new creates the dish.

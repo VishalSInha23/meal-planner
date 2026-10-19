@@ -46,6 +46,13 @@ export interface WeekPlanned {
   byName: string | null;
 }
 
+export interface WeekMember {
+  id: string;
+  name: string;
+  kcalTarget: number | null;
+  proteinTargetG: number | null;
+}
+
 export interface Week {
   weekStart: string;
   dates: string[];
@@ -53,5 +60,7 @@ export interface Week {
   mealSlots: MealSlot[];
   meals: Meal[];
   planned: WeekPlanned | null;
+  // In the order of the household's member list.
+  members: WeekMember[];
   nutrition: MemberDayNutrition[];
 }
