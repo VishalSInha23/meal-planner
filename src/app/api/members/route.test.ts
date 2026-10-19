@@ -55,6 +55,51 @@ describe("/api/members", () => {
     });
   });
 
+  it("accepts and returns height, weight, activity level and goal", async () => {
+    const fixture = await createHouseholdFixture("a");
+    signInAs(fixture.adminUserId);
+    const slots = [fixture.slotIds[0]];
+    const created = await post(
+      memberBody(slots, { heightCm: 170.5, weightKg: 70.3, activityLevel: "very_active", goal: "lose" }),
+    );
+    expect(created.status).toBe(201);
+    const kid = await created.json();
+    expect(kid).toMatchObject({ heightCm: 170.5, weightKg: 70.3, activityLevel: "very_active", goal: "lose" });
+
+    const bounds = await patch(kid.id, { heightCm: 50, weightKg: 300 });
+    expect(await bounds.json()).toMatchObject({ heightCm: 50, weightKg: 300, activityLevel: "very_active", goal: "lose" });
+    const changed = await patch(kid.id, { heightCm: 250, weightKg: 5, activityLevel: "sedentary", goal: "gain" });
+    expect(await changed.json()).toMatchObject({ heightCm: 250, weightKg: 5, activityLevel: "sedentary", goal: "gain" });
+    const cleared = await patch(kid.id, { heightCm: null, weightKg: null, activityLevel: null, goal: null });
+    expect(await cleared.json()).toMatchObject({ heightCm: null, weightKg: null, activityLevel: null, goal: null });
+
+    const plain = await (await post(memberBody(slots))).json();
+    expect(plain).toMatchObject({ heightCm: null, weightKg: null, activityLevel: null, goal: null });
+  });
+
+  it("rejects out-of-range body values on update, naming the field", async () => {
+    const fixture = await createHouseholdFixture("a");
+    signInAs(fixture.adminUserId);
+    const kid = await (await post(memberBody([fixture.slotIds[0]], { heightCm: 170, weightKg: 70 }))).json();
+    for (const [field, value] of [["heightCm", 49], ["heightCm", 251], ["weightKg", 4], ["weightKg", 301], ["activityLevel", "x"], ["goal", "x"]]) {
+      const response = await patch(kid.id, { [field]: value });
+      expect(response.status, `${field} ${value}`).toBe(400);
+      expect(Object.keys((await response.json()).error.fields)).toEqual([field]);
+    }
+    expect(await patch(kid.id, {}).then((response) => response.status)).toBe(400);
+    expect((await getDb().select().from(member).where(eq(member.id, kid.id)))[0]).toMatchObject({ heightCm: "170.0", weightKg: "70.0" });
+  });
+
+  it("lets a non-admin set their own body details but not another member's", async () => {
+    const fixture = await createHouseholdFixture("a");
+    const plain = await addAccountMember(fixture.householdId, fixture.slotIds);
+    signInAs(plain.userId);
+    const own = await patch(plain.memberId, { heightCm: 160, goal: "maintain" });
+    expect(own.status).toBe(200);
+    expect(await own.json()).toMatchObject({ heightCm: 160, goal: "maintain" });
+    expect((await patch(fixture.adminMemberId, { heightCm: 160 })).status).toBe(403);
+  });
+
   it("validates the member fields", async () => {
     const fixture = await createHouseholdFixture("a");
     signInAs(fixture.adminUserId);
@@ -70,6 +115,14 @@ describe("/api/members", () => {
       memberBody(slots, { proteinTargetG: 9.9 }),
       memberBody(slots, { proteinTargetG: 300.5 }),
       memberBody(slots, { proteinTargetG: 20.25 }),
+      memberBody(slots, { heightCm: 49.9 }),
+      memberBody(slots, { heightCm: 250.1 }),
+      memberBody(slots, { heightCm: 170.25 }),
+      memberBody(slots, { weightKg: 4.9 }),
+      memberBody(slots, { weightKg: 300.1 }),
+      memberBody(slots, { weightKg: 70.25 }),
+      memberBody(slots, { activityLevel: "extreme" }),
+      memberBody(slots, { goal: "bulk" }),
       memberBody([]),
       memberBody(slots, { isAdmin: true }),
       memberBody(slots, { userId: "someone" }),

@@ -53,7 +53,7 @@ describe("/api/preferences", () => {
     await signIn();
     const response = await get();
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ theme: null, fontStyle: null });
+    expect(await response.json()).toEqual({ theme: null, fontStyle: null, weightUnit: "kg", heightUnit: "cm" });
   });
 
   it("answers 400 naming the field on an invalid value", async () => {
@@ -65,6 +65,9 @@ describe("/api/preferences", () => {
     expect((await put({ fontStyle: "mono" })).status).toBe(400);
     expect((await put({})).status).toBe(400);
     expect((await put({ theme: "dark", extra: 1 })).status).toBe(400);
+    expect((await put({ weightUnit: "stone" })).status).toBe(400);
+    expect((await put({ heightUnit: "m" })).status).toBe(400);
+    expect((await put({ heightUnit: "ft in" })).status).toBe(400);
     expect(await getDb().select().from(userPreference)).toHaveLength(0);
   });
 
@@ -72,22 +75,32 @@ describe("/api/preferences", () => {
     await signIn();
     const created = await put({ fontStyle: "sans" });
     expect(created.status).toBe(200);
-    expect(await created.json()).toEqual({ theme: null, fontStyle: "sans" });
+    expect(await created.json()).toEqual({ theme: null, fontStyle: "sans", weightUnit: "kg", heightUnit: "cm" });
 
     const updated = await put({ theme: "dark" });
-    expect(await updated.json()).toEqual({ theme: "dark", fontStyle: "sans" });
-    expect(await (await get()).json()).toEqual({ theme: "dark", fontStyle: "sans" });
+    expect(await updated.json()).toEqual({ theme: "dark", fontStyle: "sans", weightUnit: "kg", heightUnit: "cm" });
+    expect(await (await get()).json()).toEqual({ theme: "dark", fontStyle: "sans", weightUnit: "kg", heightUnit: "cm" });
 
     const reset = await put({ fontStyle: null });
-    expect(await reset.json()).toEqual({ theme: "dark", fontStyle: null });
+    expect(await reset.json()).toEqual({ theme: "dark", fontStyle: null, weightUnit: "kg", heightUnit: "cm" });
     expect(await getDb().select().from(userPreference).where(eq(userPreference.userId, "user-1"))).toHaveLength(1);
+  });
+
+  it("saves the units and keeps the other settings", async () => {
+    await signIn();
+    await put({ theme: "dark" });
+    const lb = await put({ weightUnit: "lb" });
+    expect(await lb.json()).toEqual({ theme: "dark", fontStyle: null, weightUnit: "lb", heightUnit: "cm" });
+    const both = await put({ weightUnit: "kg", heightUnit: "ft_in" });
+    expect(await both.json()).toEqual({ theme: "dark", fontStyle: null, weightUnit: "kg", heightUnit: "ft_in" });
+    expect(await (await get()).json()).toEqual({ theme: "dark", fontStyle: null, weightUnit: "kg", heightUnit: "ft_in" });
   });
 
   it("keeps each user's preferences apart", async () => {
     await signIn("user-1");
-    await put({ theme: "dark" });
+    await put({ theme: "dark", weightUnit: "lb" });
     await signIn("user-2");
-    expect(await (await get()).json()).toEqual({ theme: null, fontStyle: null });
+    expect(await (await get()).json()).toEqual({ theme: null, fontStyle: null, weightUnit: "kg", heightUnit: "cm" });
   });
 
   it("sets the theme and font cookies for a year", async () => {

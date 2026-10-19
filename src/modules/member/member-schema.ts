@@ -15,11 +15,28 @@ export const ageBandSchema = z.string().refine((value) => AGE_BANDS.includes(val
 export const sexSchema = z.enum(["male", "female"], "Pick male or female");
 export const memberNameSchema = z.string().trim().min(1, "Give the member a name").max(40, "Use at most 40 characters");
 export const kcalTargetSchema = z.number().int("Use a whole number").min(500, "At least 500").max(6000, "At most 6000");
+const atMostOneDecimal = (value: number) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-9;
 export const proteinTargetSchema = z
   .number()
   .min(10, "At least 10")
   .max(300, "At most 300")
-  .refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-9, "Use at most one decimal");
+  .refine(atMostOneDecimal, "Use at most one decimal");
+export const HEIGHT_CM_RANGE = { min: 50, max: 250 };
+export const WEIGHT_KG_RANGE = { min: 5, max: 300 };
+export const heightCmSchema = z
+  .number()
+  .min(HEIGHT_CM_RANGE.min, `At least ${HEIGHT_CM_RANGE.min}`)
+  .max(HEIGHT_CM_RANGE.max, `At most ${HEIGHT_CM_RANGE.max}`)
+  .refine(atMostOneDecimal, "Use at most one decimal");
+export const weightKgSchema = z
+  .number()
+  .min(WEIGHT_KG_RANGE.min, `At least ${WEIGHT_KG_RANGE.min}`)
+  .max(WEIGHT_KG_RANGE.max, `At most ${WEIGHT_KG_RANGE.max}`)
+  .refine(atMostOneDecimal, "Use at most one decimal");
+export const ACTIVITY_LEVELS = ["sedentary", "light", "moderate", "active", "very_active"] as const;
+export const GOALS = ["lose", "maintain", "gain"] as const;
+export const activityLevelSchema = z.enum(ACTIVITY_LEVELS, "Pick an activity level");
+export const goalSchema = z.enum(GOALS, "Pick a goal");
 export const dateOfBirthSchema = z.string().refine(isCalendarDate, "Use a date like 1990-04-23");
 export const slotIdsSchema = z.array(z.uuid()).min(1, "Pick at least one meal slot");
 
@@ -32,6 +49,10 @@ const memberFields = {
   dateOfBirth: dateOfBirthSchema.nullable(),
   kcalTarget: kcalTargetSchema.nullable(),
   proteinTargetG: proteinTargetSchema.nullable(),
+  heightCm: heightCmSchema.nullable(),
+  weightKg: weightKgSchema.nullable(),
+  activityLevel: activityLevelSchema.nullable(),
+  goal: goalSchema.nullable(),
   slotIds: slotIdsSchema,
 };
 
@@ -44,6 +65,10 @@ export const createMemberSchema = z
     dateOfBirth: memberFields.dateOfBirth.optional(),
     kcalTarget: memberFields.kcalTarget.optional(),
     proteinTargetG: memberFields.proteinTargetG.optional(),
+    heightCm: memberFields.heightCm.optional(),
+    weightKg: memberFields.weightKg.optional(),
+    activityLevel: memberFields.activityLevel.optional(),
+    goal: memberFields.goal.optional(),
     slotIds: memberFields.slotIds,
   })
   .strict()
@@ -56,6 +81,8 @@ export const updateMemberSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Give at least one field to change");
 
+export type ActivityLevel = z.infer<typeof activityLevelSchema>;
+export type Goal = z.infer<typeof goalSchema>;
 export type CreateMember = z.infer<typeof createMemberSchema>;
 export type UpdateMember = z.infer<typeof updateMemberSchema>;
 
@@ -78,6 +105,10 @@ export interface Member {
   dateOfBirth: string | null;
   kcalTarget: number | null;
   proteinTargetG: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  activityLevel: ActivityLevel | null;
+  goal: Goal | null;
   isAdmin: boolean;
 }
 

@@ -25,6 +25,7 @@ Each account has its own app settings, saved to the account so they follow it to
 
 - **Theme**: light or dark. Until one is chosen the app follows the device setting; there is no "system" option. The header toggle switches between light and dark (its icon shows the mode it switches to; before a choice it starts from the device's current mode). The settings page has the same toggle with the current mode written next to it.
 - **Font style**: serif or sans. The default comes from the brand config. Each option is previewed in its own font.
+- **Units**: weight in kilograms or pounds (default kg) and height in centimetres or feet and inches (default cm), in a "Units" card. They decide how the member form shows and accepts height and weight; stored values stay in kg and cm. 1 kg is 2.20462 lb and 1 inch is 2.54 cm. Kilograms and pounds are shown with one decimal, feet and inches in whole inches (12 inches become the next foot).
 - Settings are saved when changed, with a spinner on the changed control. The theme (once chosen) and font are also kept in cookies (one year), so the sign-in page and a new device look right before anyone signs in. The page is rendered with the right theme and font from the first byte, so there is no flash on load.
 - **Account**: the signed-in email and a sign-out button.
 - **Household**: a link to the household settings.

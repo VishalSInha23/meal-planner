@@ -71,6 +71,13 @@
       "when": 1792384469707,
       "tag": "0009_bright_supernaut",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792424742620,
+      "tag": "0010_nappy_gauntlet",
+      "breakpoints": true
     }
   ]
 }

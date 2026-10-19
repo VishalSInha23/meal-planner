@@ -4,9 +4,16 @@ import { userPreference } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
 import type { Preferences, UpdatePreferences } from "./user-preference-schema.ts";
 
+const columns = {
+  theme: userPreference.theme,
+  fontStyle: userPreference.fontStyle,
+  weightUnit: userPreference.weightUnit,
+  heightUnit: userPreference.heightUnit,
+};
+
 export async function findByUserId(userId: string, db: DbOrTx = getDb()): Promise<Preferences | null> {
   const [row] = await db
-    .select({ theme: userPreference.theme, fontStyle: userPreference.fontStyle })
+    .select(columns)
     .from(userPreference)
     .where(eq(userPreference.userId, userId));
   return row ?? null;
@@ -18,6 +25,6 @@ export async function upsert(userId: string, values: UpdatePreferences, db: DbOr
     .insert(userPreference)
     .values({ userId, ...values })
     .onConflictDoUpdate({ target: userPreference.userId, set: { ...values, updatedAt: new Date() } })
-    .returning({ theme: userPreference.theme, fontStyle: userPreference.fontStyle });
+    .returning(columns);
   return row;
 }

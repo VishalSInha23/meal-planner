@@ -1,6 +1,7 @@
 import { brand } from "@/config/generated/brand";
 import * as repository from "./user-preference-repository.ts";
 import {
+  DEFAULT_UNITS,
   fontStyleSchema,
   themeSchema,
   type Appearance,
@@ -9,7 +10,7 @@ import {
   type UpdatePreferences,
 } from "./user-preference-schema.ts";
 
-const defaults: Preferences = { theme: null, fontStyle: null };
+const defaults: Preferences = { theme: null, fontStyle: null, ...DEFAULT_UNITS };
 
 export function effectiveFont(fontStyle: FontStyle | null): FontStyle {
   return fontStyle ?? brand.fonts.defaultStyle;

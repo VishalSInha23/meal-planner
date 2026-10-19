@@ -7,6 +7,8 @@ import { FieldError, FieldHint, controlBorder } from "./field-parts";
 export interface SelectOption {
   value: string;
   label: string;
+  // A short line under the label in the list. The closed select shows only the label.
+  description?: string;
 }
 
 export interface SelectProps {
@@ -55,7 +57,10 @@ export function Select({ label, options, value, onValueChange, placeholder, hint
                   value={option.value}
                   className="flex min-h-11 cursor-pointer items-center justify-between gap-2 px-3 text-base data-highlighted:bg-ink/15 data-[state=checked]:font-semibold"
                 >
-                  <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
+                  <span className="flex flex-col py-1">
+                    <RadixSelect.ItemText>{option.label}</RadixSelect.ItemText>
+                    {option.description && <span className="text-ink/75">{option.description}</span>}
+                  </span>
                   <RadixSelect.ItemIndicator aria-hidden="true">✓</RadixSelect.ItemIndicator>
                 </RadixSelect.Item>
               ))}

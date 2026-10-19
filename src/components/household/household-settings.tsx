@@ -6,6 +6,7 @@ import { useState } from "react";
 import { FieldError } from "@/components/ui/field-parts";
 import { apiRequest } from "@/lib/http/api-client";
 import type { HouseholdOverview } from "@/modules/household/household-schema";
+import type { Units } from "@/modules/user-preference/user-preference-schema";
 import { SettingsHouseholdCard } from "./settings-household-card";
 import { SettingsMembersCard } from "./settings-members-card";
 import { SettingsSlotsCard } from "./settings-slots-card";
@@ -15,9 +16,11 @@ export interface HouseholdSettingsProps {
   initial: HouseholdOverview;
   // The signed-in user's member.
   meId: string;
+  // The signed-in user's height and weight units.
+  units: Units;
 }
 
-export function HouseholdSettings({ initial, meId }: HouseholdSettingsProps) {
+export function HouseholdSettings({ initial, meId, units }: HouseholdSettingsProps) {
   const [overview, setOverview] = useState(initial);
   const [loadError, setLoadError] = useState<string>();
   const viewer = overview.members.find((member) => member.id === meId);
@@ -52,7 +55,7 @@ export function HouseholdSettings({ initial, meId }: HouseholdSettingsProps) {
         <SettingsHouseholdCard household={overview.household} isAdmin={viewer.isAdmin} reload={reload} />
         <SettingsSlotsCard slots={overview.mealSlots} isAdmin={viewer.isAdmin} reload={reload} />
         <SettingsTripsCard trips={overview.shoppingTrips} isAdmin={viewer.isAdmin} reload={reload} />
-        <SettingsMembersCard overview={overview} viewer={viewer} reload={reload} />
+        <SettingsMembersCard overview={overview} viewer={viewer} units={units} reload={reload} />
       </div>
     </div>
   );

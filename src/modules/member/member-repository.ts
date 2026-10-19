@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { member, memberMealSlot } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
-import type { Member, MemberWithSlots } from "./member-schema.ts";
+import type { ActivityLevel, Goal, Member, MemberWithSlots } from "./member-schema.ts";
 
 type Row = typeof member.$inferSelect;
 
@@ -13,6 +13,10 @@ export interface MemberValues {
   dateOfBirth: string | null;
   kcalTarget: number | null;
   proteinTargetG: number | null;
+  heightCm: number | null;
+  weightKg: number | null;
+  activityLevel: ActivityLevel | null;
+  goal: Goal | null;
   isAdmin: boolean;
   userId: string | null;
 }
@@ -28,14 +32,27 @@ function toMember(row: Row): Member {
     dateOfBirth: row.dateOfBirth,
     kcalTarget: row.kcalTarget,
     proteinTargetG: row.proteinTargetG === null ? null : Number(row.proteinTargetG),
+    heightCm: row.heightCm === null ? null : Number(row.heightCm),
+    weightKg: row.weightKg === null ? null : Number(row.weightKg),
+    activityLevel: row.activityLevel,
+    goal: row.goal,
     isAdmin: row.isAdmin,
   };
 }
 
-// The numeric column takes its value as text.
+// A numeric column takes its value as text. An absent value stays absent.
+function numericText(value: number | null | undefined): string | null | undefined {
+  return value === undefined || value === null ? value : value.toFixed(1);
+}
+
 function toRowValues<V extends Partial<MemberValues>>(values: V) {
-  const { proteinTargetG, ...rest } = values;
-  return proteinTargetG === undefined ? rest : { ...rest, proteinTargetG: proteinTargetG === null ? null : proteinTargetG.toFixed(1) };
+  const { proteinTargetG, heightCm, weightKg, ...rest } = values;
+  return {
+    ...rest,
+    proteinTargetG: numericText(proteinTargetG),
+    heightCm: numericText(heightCm),
+    weightKg: numericText(weightKg),
+  };
 }
 
 // Looks a member up by account, so it is the one query that does not start from a household.
