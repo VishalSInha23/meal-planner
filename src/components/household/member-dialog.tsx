@@ -50,7 +50,7 @@ function MemberDialogBody({ member, overview, viewer, units, onClose, reload }: 
   const viewerIsAdmin = viewer.isAdmin;
   const canEdit = member ? viewerIsAdmin || member.id === viewer.id : viewerIsAdmin;
   const showAdminSwitch = viewerIsAdmin && member !== null && member.userId !== null;
-  const canRemove = viewerIsAdmin && member !== null && member.userId === null;
+  const canRemove = viewerIsAdmin && member !== null && member.id !== viewer.id;
   const failure = saving.failure ?? removing.failure;
 
   // The API names the field it rejected; a last-admin conflict belongs next to the Admin switch.
@@ -96,7 +96,8 @@ function MemberDialogBody({ member, overview, viewer, units, onClose, reload }: 
     return (
       <div className="flex flex-col gap-4">
         <p>
-          Remove {member.name}? They are also removed from every meal they were ticked for. This cannot be undone.
+          Remove {member.name}? They are also removed from every meal they were ticked for.
+          {member.userId !== null && " Their account leaves the household and goes back to onboarding."} This cannot be undone.
         </p>
         {formMessage && <FieldError id="remove-member-error">{formMessage}</FieldError>}
         <div className="flex gap-2">
