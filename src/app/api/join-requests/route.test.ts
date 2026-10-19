@@ -220,6 +220,14 @@ describe("/api/join-requests", () => {
         const confirmed = await ask({ code: target.joinCode, confirmDeleteHousehold: true });
         expect(confirmed.status).toBe(201);
         expect(await getDb().select().from(household)).toHaveLength(2);
+        expect((await getDb().select().from(joinRequest))[0].confirmedDeleteHousehold).toBe(true);
+      });
+
+      it("stores false when the asker sent no confirmation", async () => {
+        await addAccountMember(own.householdId, own.slotIds);
+        await getDb().update(member).set({ isAdmin: true }).where(eq(member.userId, "plain-user"));
+        expect((await ask({ code: target.joinCode })).status).toBe(201);
+        expect((await getDb().select().from(joinRequest))[0].confirmedDeleteHousehold).toBe(false);
       });
     });
   });

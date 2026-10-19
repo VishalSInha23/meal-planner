@@ -29,7 +29,7 @@ const approveRequest = (id: string, body?: unknown) =>
 const declineRequest = (id: string) => decline(jsonRequest("POST", `/api/household/join-requests/${id}/decline`), paramsOf(id));
 const errorOf = async (response: Response) => (await response.json()).error;
 
-async function askToJoin(householdId: string, userId: string, status = "pending") {
+async function askToJoin(householdId: string, userId: string, status = "pending", confirmedDeleteHousehold = false) {
   const [row] = await getDb()
     .insert(joinRequest)
     .values({
@@ -39,6 +39,7 @@ async function askToJoin(householdId: string, userId: string, status = "pending"
       sex: "female",
       dateOfBirth: "1990-01-01",
       status: status as "pending",
+      confirmedDeleteHousehold,
     })
     .returning();
   return row;
@@ -195,7 +196,7 @@ describe("/api/household/join-requests", () => {
       await createUser("other-asker");
       await askToJoin(old.householdId, "other-asker");
       expect(await survivingTables(filled)).toHaveLength(14);
-      const request = await askToJoin(target.householdId, old.adminUserId);
+      const request = await askToJoin(target.householdId, old.adminUserId, "pending", true);
       signInAs(target.adminUserId);
 
       const response = await approveRequest(request.id);
@@ -238,6 +239,39 @@ describe("/api/household/join-requests", () => {
       expect((await memberOf(old.adminUserId)).householdId).toBe(old.householdId);
       expect(await getDb().select().from(member).where(eq(member.householdId, target.householdId))).toHaveLength(1);
       expect(await getDb().select().from(member).where(eq(member.householdId, old.householdId))).toHaveLength(2);
+    });
+
+    it("refuses with would_delete_household when the other accounts left after the asker asked without confirming", async () => {
+      const target = await createHouseholdFixture("a");
+      const old = await createHouseholdFixture("old");
+      const other = await addAccountMember(old.householdId, old.slotIds, "old-plain");
+      const request = await askToJoin(target.householdId, old.adminUserId);
+      await getDb().delete(member).where(eq(member.id, other.memberId));
+      signInAs(target.adminUserId);
+
+      const response = await approveRequest(request.id);
+      expect(response.status).toBe(409);
+      const error = await errorOf(response);
+      expect(error.code).toBe("would_delete_household");
+      expect(error.message).toBe(`Approving would delete House old. Ask them to send a new request`);
+      expect((await requestRow(request.id)).status).toBe("pending");
+      expect((await memberOf(old.adminUserId)).householdId).toBe(old.householdId);
+      expect(await getDb().select().from(household).where(eq(household.id, old.householdId))).toHaveLength(1);
+      expect(await getDb().select().from(member).where(eq(member.householdId, target.householdId))).toHaveLength(1);
+    });
+
+    it("refuses with would_delete_household when an asker without a household created one after asking", async () => {
+      const target = await createHouseholdFixture("a");
+      const created = await createHouseholdFixture("created");
+      const request = await askToJoin(target.householdId, created.adminUserId);
+      signInAs(target.adminUserId);
+
+      const response = await approveRequest(request.id);
+      expect(response.status).toBe(409);
+      expect((await errorOf(response)).code).toBe("would_delete_household");
+      expect((await requestRow(request.id)).status).toBe("pending");
+      expect((await memberOf(created.adminUserId)).householdId).toBe(created.householdId);
+      expect(await getDb().select().from(household).where(eq(household.id, created.householdId))).toHaveLength(1);
     });
 
     it("refuses with already_in_household when the asker joined this household meanwhile, and leaves the request pending", async () => {

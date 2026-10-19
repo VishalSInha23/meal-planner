@@ -26,6 +26,7 @@ An account belongs to at most one household. People join an existing household w
   - **Add as a new member**: a new member with the asker's details, eating in every meal slot, not an admin.
 - An admin can decline a request. The asker sees "Your request to join <household> was declined" until they make a new request or dismiss it.
 - Approving is checked again at that moment: the request must still be pending, and the asker must be able to leave their current household (see Leaving). If not, it is refused with the reason and the request stays pending. It is also refused when the asker has joined this household in the meantime (409 `already_in_household`) and when the member to link has gained an account (409 `member_has_account`). A request that is no longer pending (declined, cancelled or approved by another admin) is refused with 409 `request_not_pending`; when two admins approve the same request at once, exactly one succeeds.
+- Approving deletes the asker's household only if they confirmed that when asking; if leaving would now delete it and they didn't confirm (the other accounts left, or they created a household since), approval is refused with 409 `would_delete_household` ("Approving would delete <household>. Ask them to send a new request"), the request stays pending and nothing changes.
 - On approval, the asker leaves their current household (if any) and joins this one, in one step: there is never a moment where they are in both or in neither.
 
 ## Leaving and removing

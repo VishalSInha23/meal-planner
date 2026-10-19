@@ -23,6 +23,7 @@ export interface JoinRequestValues {
   name: string;
   sex: "male" | "female";
   dateOfBirth: string;
+  confirmedDeleteHousehold?: boolean;
 }
 
 // The request is made by an account, so these queries start from the account, not from a household.
@@ -103,7 +104,9 @@ export async function decidePending(
     .set({ status, decidedAt: new Date(), decidedByMemberId })
     .where(and(eq(joinRequest.householdId, householdId), eq(joinRequest.id, id), eq(joinRequest.status, "pending")))
     .returning();
-  return row ? { ...toJoinRequest(row), userId: row.userId } : null;
+  return row
+    ? { ...toJoinRequest(row), userId: row.userId, confirmedDeleteHousehold: row.confirmedDeleteHousehold }
+    : null;
 }
 
 export async function existsInHousehold(householdId: string, id: string, db: DbOrTx): Promise<boolean> {

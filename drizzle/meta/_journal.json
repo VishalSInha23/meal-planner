@@ -92,6 +92,13 @@
       "when": 1792429103455,
       "tag": "0012_household_delete_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1792429476762,
+      "tag": "0013_confirmed_delete_household",
+      "breakpoints": true
     }
   ]
 }

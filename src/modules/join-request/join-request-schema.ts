@@ -43,6 +43,7 @@ export interface MyJoinRequest extends JoinRequest {
 // A request as the deciding admin's transaction sees it, with the account that asked.
 export interface DecidedJoinRequest extends JoinRequest {
   userId: string;
+  confirmedDeleteHousehold: boolean;
 }
 
 export const approveJoinRequestSchema = z.object({ linkMemberId: z.uuid().optional() }).strict();

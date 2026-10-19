@@ -50,7 +50,10 @@ export async function createJoinRequest(userId: string, input: CreateJoinRequest
   await checkCanLeave(userId, { confirmDeleteHousehold: input.confirmDeleteHousehold });
 
   try {
-    const request = await repository.insert(target.id, userId, details);
+    const request = await repository.insert(target.id, userId, {
+      ...details,
+      confirmedDeleteHousehold: input.confirmDeleteHousehold === true,
+    });
     return { ...request, householdName: target.name };
   } catch (error) {
     // Two asks at once: the unique pending request per account lets only one win.
@@ -111,8 +114,12 @@ export async function approveJoinRequest(admin: Member, id: string, input: Appro
       if (current.householdId === householdId) {
         throw new AppError(409, "already_in_household", "They are already in this household");
       }
-      // The asker confirmed deleting their household when asking. A failing check aborts the whole approval.
-      await leaveHousehold(tx, request.userId, { confirmDeleteHousehold: true });
+      // Only what the asker confirmed when asking counts. A failing check aborts the whole approval, so the request
+      // stays pending.
+      await leaveHousehold(tx, request.userId, {
+        confirmDeleteHousehold: request.confirmedDeleteHousehold,
+        wouldDeleteMessage: (name) => `Approving would delete ${name}. Ask them to send a new request`,
+      });
     }
 
     const details = { name: request.name, sex: request.sex, dateOfBirth: request.dateOfBirth };

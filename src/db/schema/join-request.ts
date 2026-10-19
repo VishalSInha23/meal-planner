@@ -1,4 +1,4 @@
-import { check, date, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, date, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { household } from "./household.ts";
 import { member } from "./member.ts";
@@ -17,6 +17,7 @@ export const joinRequest = pgTable(
     name: text("name").notNull(),
     sex: text("sex", { enum: ["male", "female"] }).notNull(),
     dateOfBirth: date("date_of_birth", { mode: "string" }).notNull(),
+    confirmedDeleteHousehold: boolean("confirmed_delete_household").notNull().default(false),
     status: text("status", { enum: ["pending", "approved", "declined", "cancelled", "dismissed"] })
       .notNull()
       .default("pending"),

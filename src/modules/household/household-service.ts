@@ -41,12 +41,18 @@ export function findHouseholdByJoinCode(joinCode: string, db?: DbOrTx): Promise<
 }
 
 // Whether the account can leave its household, by the rules in docs/spec/08-joining.md (Leaving and removing).
+interface LeaveOptions {
+  confirmDeleteHousehold?: boolean;
+  // Replaces the message of would_delete_household, for callers that are not the leaver.
+  wouldDeleteMessage?: (householdName: string) => string;
+}
+
 // An account without a household can always leave. Throws 409 last_admin for the only admin of a household
 // with other account members, and 409 would_delete_household for the last account member unless confirmed.
 // Returns whether leaving deletes the household.
 export async function checkCanLeave(
   userId: string,
-  options: { confirmDeleteHousehold?: boolean } = {},
+  options: LeaveOptions = {},
   db?: DbOrTx,
 ): Promise<{ deletesHousehold: boolean }> {
   const current = await memberRepository.findByUserId(userId, db);
@@ -59,7 +65,8 @@ export async function checkCanLeave(
   const household = await repository.findById(current.householdId, db);
   if (!options.confirmDeleteHousehold) {
     const name = household?.name ?? "your household";
-    throw new AppError(409, "would_delete_household", `This will delete ${name}, with its plan, dishes and members`);
+    const message = options.wouldDeleteMessage?.(name) ?? `This will delete ${name}, with its plan, dishes and members`;
+    throw new AppError(409, "would_delete_household", message);
   }
   return { deletesHousehold: true };
 }
@@ -71,7 +78,7 @@ export async function checkCanLeave(
 export async function leaveHousehold(
   tx: Tx,
   userId: string,
-  options: { confirmDeleteHousehold?: boolean } = {},
+  options: LeaveOptions = {},
 ): Promise<{ deletedHousehold: boolean }> {
   const first = await memberRepository.findByUserId(userId, tx);
   if (!first) return { deletedHousehold: false };
