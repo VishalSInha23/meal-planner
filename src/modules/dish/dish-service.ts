@@ -1,6 +1,7 @@
-import { withTransaction } from "@/db/transaction";
+import { withTransaction, type Tx } from "@/db/transaction";
 import { uniqueViolation } from "@/db/errors";
 import { conflict, notFound } from "@/lib/http/errors";
+import * as mealRepository from "../meal/meal-repository.ts";
 import { resolveIngredientIds } from "../ingredient/ingredient-service.ts";
 import * as repository from "./dish-repository.ts";
 import type { CreateDish, Dish, ListDishes, UpdateDish } from "./dish-schema.ts";
@@ -16,21 +17,23 @@ export function listDishes(householdId: string, filter: ListDishes): Promise<Dis
   return repository.list(householdId, filter);
 }
 
-export async function getDish(householdId: string, id: string): Promise<Dish> {
-  const found = await repository.findById(householdId, id);
+export async function getDish(householdId: string, id: string, tx?: Tx): Promise<Dish> {
+  const found = await repository.findById(householdId, id, tx);
   if (!found) throw notFound("Dish not found");
   return found;
 }
 
-export async function createDish(householdId: string, input: CreateDish): Promise<Dish> {
+// Pass tx to create the dish as part of a larger transaction.
+export async function createDish(householdId: string, input: CreateDish, tx?: Tx): Promise<Dish> {
   const { ingredients, ...values } = input;
+  const insert = async (db: Tx) => {
+    const dishId = await repository.insert(householdId, values, db);
+    await repository.replaceIngredients(dishId, await resolveIngredientIds(householdId, ingredients, db), db);
+    return dishId;
+  };
   try {
-    const id = await withTransaction(async (tx) => {
-      const dishId = await repository.insert(householdId, values, tx);
-      await repository.replaceIngredients(dishId, await resolveIngredientIds(householdId, ingredients, tx), tx);
-      return dishId;
-    });
-    return await getDish(householdId, id);
+    const id = tx ? await insert(tx) : await withTransaction(insert);
+    return await getDish(householdId, id, tx);
   } catch (error) {
     throw dishConflict(input.name, error);
   }
@@ -50,5 +53,9 @@ export async function updateDish(householdId: string, id: string, input: UpdateD
 }
 
 export async function deleteDish(householdId: string, id: string): Promise<void> {
-  if (!(await repository.remove(householdId, id))) throw notFound("Dish not found");
+  await withTransaction(async (tx) => {
+    if (!(await repository.remove(householdId, id, tx))) throw notFound("Dish not found");
+    // The dish left every meal it was in; meals that held only it go too.
+    await mealRepository.removeEmptyMeals(householdId, tx);
+  });
 }

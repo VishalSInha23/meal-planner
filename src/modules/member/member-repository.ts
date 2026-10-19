@@ -122,3 +122,13 @@ export async function setSlots(householdId: string, memberId: string, slotIds: s
   if (slotIds.length === 0) return;
   await db.insert(memberMealSlot).values(slotIds.map((mealSlotId) => ({ memberId, mealSlotId })));
 }
+
+// The members of the household who eat in the slot.
+export async function idsInSlot(householdId: string, mealSlotId: string, db: DbOrTx = getDb()): Promise<string[]> {
+  const rows = await db
+    .select({ memberId: memberMealSlot.memberId })
+    .from(memberMealSlot)
+    .innerJoin(member, eq(member.id, memberMealSlot.memberId))
+    .where(and(eq(member.householdId, householdId), eq(memberMealSlot.mealSlotId, mealSlotId)));
+  return rows.map((row) => row.memberId);
+}

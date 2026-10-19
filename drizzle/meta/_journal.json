@@ -50,6 +50,13 @@
       "when": 1792381410276,
       "tag": "0006_sparkling_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792382334358,
+      "tag": "0007_dry_hemingway",
+      "breakpoints": true
     }
   ]
 }

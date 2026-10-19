@@ -17,3 +17,10 @@ export async function idParam(params: Promise<{ id: string }>): Promise<string> 
 export function parseQuery<S extends z.ZodType>(request: Request, schema: S): z.output<S> {
   return schema.parse(Object.fromEntries(new URL(request.url).searchParams));
 }
+
+// A uuid from a named URL segment, for routes with more than one. Anything else is not found.
+export async function uuidParam<K extends string>(params: Promise<Record<K, string>>, name: K): Promise<string> {
+  const parsed = z.uuid().safeParse((await params)[name]);
+  if (!parsed.success) throw notFound();
+  return parsed.data;
+}

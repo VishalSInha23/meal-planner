@@ -11,3 +11,7 @@ export * from "./shopping-trip.ts";
 export * from "./ingredient.ts";
 export * from "./dish.ts";
 export * from "./dish-ingredient.ts";
+export * from "./meal.ts";
+export * from "./meal-dish.ts";
+export * from "./meal-dish-member.ts";
+export * from "./week-plan.ts";
