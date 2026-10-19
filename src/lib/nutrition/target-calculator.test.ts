@@ -39,7 +39,16 @@ describe("suggestTargets adults", () => {
       activityLevel: "sedentary",
       goal: "lose",
     };
-    expect(ok(woman)).toMatchObject({ kcal: 1280, proteinG: 60 });
+    const result = ok(woman);
+    expect(result).toMatchObject({ kcal: 1280, proteinG: 60 });
+    expect(result.steps.some((step) => step.label === "Raised to BMR (the minimum)")).toBe(true);
+    expect(result.steps.find((step) => step.label === "Energy before rounding")?.value).toBeCloseTo(1279, 2);
+  });
+
+  it("has no BMR note when the floor does not apply", () => {
+    const result = ok({ ...man, goal: "lose" });
+    expect(result.steps.some((step) => step.label.includes("BMR (the minimum)"))).toBe(false);
+    expect(result.steps.find((step) => step.label === "Energy before rounding")?.value).toBeCloseTo(2075.45, 2);
   });
 
   // 2594.31 * 1.1 = 2853.74 -> 2850; protein 1.4 * 75 = 105
@@ -51,6 +60,34 @@ describe("suggestTargets adults", () => {
   it("gives very active people who gain 1.8 g of protein per kg", () => {
     const result = ok({ ...man, weightKg: 100, activityLevel: "very_active", goal: "gain" });
     expect(result.proteinG).toBe(180);
+  });
+});
+
+describe("suggestTargets limits", () => {
+  it("limits protein to the maximum", () => {
+    const result = ok({ ...man, weightKg: 180, activityLevel: "very_active", goal: "gain" });
+    expect(result.proteinG).toBe(300);
+    expect(result.steps.some((step) => step.label === "Protein limited to the 300 g maximum")).toBe(true);
+  });
+
+  // BMR = 100 + 750 - 400 - 161 = 289 -> 290 kcal; protein 0.8 * 10 = 8
+  it("limits a very light adult to the minimums", () => {
+    const result = ok({
+      sex: "female",
+      ageYears: 80,
+      heightCm: 120,
+      weightKg: 10,
+      activityLevel: "sedentary",
+      goal: "maintain",
+    });
+    expect(result).toMatchObject({ kcal: 500, proteinG: 10 });
+    const labels = result.steps.map((step) => step.label);
+    expect(labels).toContain("Energy limited to the 500 kcal minimum");
+    expect(labels).toContain("Protein limited to the 10 g minimum");
+  });
+
+  it("adds no limit note inside the ranges", () => {
+    expect(ok(man).steps.some((step) => step.label.includes("limited"))).toBe(false);
   });
 });
 

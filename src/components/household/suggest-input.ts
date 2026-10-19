@@ -46,3 +46,12 @@ export function suggestInputFromDraft(draft: MemberDraft, today: string, units: 
     },
   };
 }
+
+// The form draft after Apply: everything typed in the panel (also fields cleared in the form after the panel opened) plus the suggested targets.
+export function applySuggestion(
+  draft: MemberDraft,
+  typed: Partial<MemberDraft>,
+  targets: { kcal: number; proteinG: number },
+): MemberDraft {
+  return { ...draft, ...typed, kcalTarget: String(targets.kcal), proteinTargetG: String(targets.proteinG) };
+}

@@ -14,12 +14,18 @@ export const AGE_BANDS = buildAgeBands();
 export const ageBandSchema = z.string().refine((value) => AGE_BANDS.includes(value), "Pick an age band");
 export const sexSchema = z.enum(["male", "female"], "Pick male or female");
 export const memberNameSchema = z.string().trim().min(1, "Give the member a name").max(40, "Use at most 40 characters");
-export const kcalTargetSchema = z.number().int("Use a whole number").min(500, "At least 500").max(6000, "At most 6000");
+export const KCAL_TARGET_RANGE = { min: 500, max: 6000 };
+export const PROTEIN_TARGET_RANGE = { min: 10, max: 300 };
+export const kcalTargetSchema = z
+  .number()
+  .int("Use a whole number")
+  .min(KCAL_TARGET_RANGE.min, `At least ${KCAL_TARGET_RANGE.min}`)
+  .max(KCAL_TARGET_RANGE.max, `At most ${KCAL_TARGET_RANGE.max}`);
 const atMostOneDecimal = (value: number) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-9;
 export const proteinTargetSchema = z
   .number()
-  .min(10, "At least 10")
-  .max(300, "At most 300")
+  .min(PROTEIN_TARGET_RANGE.min, `At least ${PROTEIN_TARGET_RANGE.min}`)
+  .max(PROTEIN_TARGET_RANGE.max, `At most ${PROTEIN_TARGET_RANGE.max}`)
   .refine(atMostOneDecimal, "Use at most one decimal");
 export const HEIGHT_CM_RANGE = { min: 50, max: 250 };
 export const WEIGHT_KG_RANGE = { min: 5, max: 300 };

@@ -12,22 +12,12 @@ import { localToday } from "@/lib/time/week";
 import type { Units } from "@/modules/user-preference/user-preference-schema";
 import type { MemberDraft } from "./member-draft";
 import { ACTIVITY_OPTIONS, AGE_BAND_OPTIONS, GOAL_OPTIONS, SEX_OPTIONS } from "./options";
-import { suggestInputFromDraft, type SuggestField } from "./suggest-input";
+import { applySuggestion, suggestInputFromDraft, type SuggestField } from "./suggest-input";
 
 const ESTIMATE_NOTE = "An estimate, not medical advice. Not for pregnancy, breastfeeding or medical conditions.";
 const UNDER_3_MESSAGE = "Targets can't be suggested for children under 3; set them yourself or ask a paediatrician.";
 const BAND_NOTE = "Add a date of birth for a more accurate estimate.";
 const ADULT_AGE = 18;
-
-// The draft keys each missing field is typed into.
-const FIELD_KEYS: Record<SuggestField, (keyof MemberDraft)[]> = {
-  sex: ["sex"],
-  age: ["ageBand"],
-  height: ["height", "heightInches"],
-  weight: ["weight"],
-  activityLevel: ["activityLevel"],
-  goal: ["goal"],
-};
 
 function formatStep(step: TargetStep): string {
   if (step.value === null) return step.label;
@@ -43,7 +33,7 @@ export interface SuggestTargetsProps {
 }
 
 export function SuggestTargets({ draft, onApply, units, disabled }: SuggestTargetsProps) {
-  // The fields that were missing when the panel opened, asked for in the panel; their values stay in `typed` until applied.
+  // The fields that were missing when the panel opened, asked for in the panel; their values stay in `typed` until applied, and Apply copies all of `typed`.
   const [asked, setAsked] = useState<SuggestField[] | null>(null);
   const [typed, setTyped] = useState<Partial<MemberDraft>>({});
 
@@ -72,11 +62,7 @@ export function SuggestTargets({ draft, onApply, units, disabled }: SuggestTarge
 
   function apply() {
     if (!suggestion?.ok) return;
-    const typedInputs: Partial<MemberDraft> = {};
-    for (const field of asked ?? []) {
-      for (const key of FIELD_KEYS[field]) Object.assign(typedInputs, { [key]: merged[key] });
-    }
-    onApply({ ...draft, ...typedInputs, kcalTarget: String(suggestion.kcal), proteinTargetG: String(suggestion.proteinG) });
+    onApply(applySuggestion(draft, typed, suggestion));
     setAsked(null);
   }
 

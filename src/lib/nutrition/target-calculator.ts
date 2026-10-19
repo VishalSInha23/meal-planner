@@ -1,4 +1,9 @@
-import type { ActivityLevel, Goal } from "@/modules/member/member-schema";
+import {
+  KCAL_TARGET_RANGE,
+  PROTEIN_TARGET_RANGE,
+  type ActivityLevel,
+  type Goal,
+} from "@/modules/member/member-schema";
 
 type Sex = "male" | "female";
 
@@ -54,6 +59,40 @@ function roundKcal(value: number): number {
   return Math.round(value / 10) * 10;
 }
 
+function clamp(value: number, range: { min: number; max: number }): { value: number; side: "min" | "max" | null } {
+  if (value < range.min) return { value: range.min, side: "min" };
+  if (value > range.max) return { value: range.max, side: "max" };
+  return { value, side: null };
+}
+
+// Rounds the energy and protein, keeps both inside the saved target ranges and notes any limit applied. `steps` come before the rounding steps.
+function finish(
+  energy: number,
+  protein: number,
+  steps: TargetStep[],
+  method: TargetMethod,
+  proteinSteps: TargetStep[] = [],
+): TargetSuggestion {
+  const notes: TargetStep[] = [];
+  const kcal = clamp(roundKcal(energy), KCAL_TARGET_RANGE);
+  const proteinG = clamp(Math.round(protein), PROTEIN_TARGET_RANGE);
+  if (kcal.side) {
+    const limit = kcal.side === "min" ? "minimum" : "maximum";
+    notes.push({ label: `Energy limited to the ${kcal.value} kcal ${limit}`, value: null, unit: "" });
+  }
+  if (proteinG.side) {
+    const limit = proteinG.side === "min" ? "minimum" : "maximum";
+    notes.push({ label: `Protein limited to the ${proteinG.value} g ${limit}`, value: null, unit: "" });
+  }
+  return {
+    ok: true,
+    kcal: kcal.value,
+    proteinG: proteinG.value,
+    method,
+    steps: [...steps, { label: "Energy before rounding", value: energy, unit: "kcal" }, ...proteinSteps, ...notes],
+  };
+}
+
 function childProteinPerKg(ageYears: number): number {
   if (ageYears === 3) return 1.05;
   return ageYears <= 13 ? 0.95 : 0.85;
@@ -75,18 +114,17 @@ function childEnergy(input: TargetInput): { energy: number; pa: number } {
 function suggestForChild(input: TargetInput): TargetSuggestion {
   const { energy, pa } = childEnergy(input);
   const perKg = childProteinPerKg(input.ageYears);
-  return {
-    ok: true,
-    kcal: roundKcal(energy),
-    proteinG: Math.round(perKg * input.weightKg),
-    method: "dri_eer",
-    steps: [
+  return finish(
+    energy,
+    perKg * input.weightKg,
+    [
       { label: "Energy requirement", value: energy, unit: "kcal" },
       { label: "Activity coefficient", value: pa, unit: "" },
       { label: "Goal not applied under 18", value: null, unit: "" },
-      { label: "Protein per kg", value: perKg, unit: "g" },
     ],
-  };
+    "dri_eer",
+    [{ label: "Protein per kg", value: perKg, unit: "g" }],
+  );
 }
 
 function suggestForAdult(input: TargetInput): TargetSuggestion {
@@ -95,20 +133,16 @@ function suggestForAdult(input: TargetInput): TargetSuggestion {
   const factor = ADULT_ACTIVITY_FACTOR[activityLevel];
   const maintenance = bmr * factor;
   const goalFactor = goal === "lose" ? 0.8 : goal === "gain" ? 1.1 : 1;
-  const energy = goal === "lose" ? Math.max(maintenance * goalFactor, bmr) : maintenance * goalFactor;
+  const floored = goal === "lose" && maintenance * goalFactor < bmr;
+  const energy = floored ? bmr : maintenance * goalFactor;
   const perKg = ADULT_PROTEIN_PER_KG[activityLevel] + (goal === "maintain" ? 0 : 0.2);
-  return {
-    ok: true,
-    kcal: roundKcal(energy),
-    proteinG: Math.round(perKg * weightKg),
-    method: "mifflin_st_jeor",
-    steps: [
-      { label: "BMR", value: bmr, unit: "kcal" },
-      { label: "Activity factor", value: factor, unit: "" },
-      { label: "Goal adjustment", value: goalFactor, unit: "" },
-      { label: "Protein per kg", value: perKg, unit: "g" },
-    ],
-  };
+  const steps: TargetStep[] = [
+    { label: "BMR", value: bmr, unit: "kcal" },
+    { label: "Activity factor", value: factor, unit: "" },
+    { label: "Goal adjustment", value: goalFactor, unit: "" },
+  ];
+  if (floored) steps.push({ label: "Raised to BMR (the minimum)", value: null, unit: "" });
+  return finish(energy, perKg * weightKg, steps, "mifflin_st_jeor", [{ label: "Protein per kg", value: perKg, unit: "g" }]);
 }
 
 export function suggestTargets(input: TargetInput): TargetSuggestion {

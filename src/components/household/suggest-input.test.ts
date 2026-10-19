@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyMemberDraft, type MemberDraft } from "./member-draft";
-import { suggestInputFromDraft } from "./suggest-input";
+import { applySuggestion, suggestInputFromDraft } from "./suggest-input";
 
 const TODAY = "2026-10-19";
 const METRIC = { heightUnit: "cm", weightUnit: "kg" } as const;
@@ -51,5 +51,13 @@ describe("suggestInputFromDraft", () => {
   it("treats unusable numbers and a future date of birth as missing", () => {
     const result = suggestInputFromDraft(full({ height: "abc", weight: "0", ageBand: "", dateOfBirth: "2030-01-01" }), TODAY, METRIC);
     expect(result).toEqual({ ok: false, missing: ["age", "height", "weight"] });
+  });
+});
+
+describe("applySuggestion", () => {
+  it("keeps a typed height when nothing was asked at open and the form field was cleared", () => {
+    const draft: MemberDraft = { ...emptyMemberDraft([], "Asha"), height: "" };
+    const result = applySuggestion(draft, { height: "172" }, { kcal: 2000, proteinG: 80 });
+    expect(result).toMatchObject({ height: "172", kcalTarget: "2000", proteinTargetG: "80" });
   });
 });
