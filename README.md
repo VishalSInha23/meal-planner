@@ -26,7 +26,7 @@ Copy `.env.example` to `.env` and fill it:
 | `LOG_ENABLED` | `false` turns logging off |
 | `REQUEST_ID_FORMAT` | `base36` (default, 8 characters) or `uuid` |
 
-Copy `config/app.example.json` to `config/app.json` (`port` and `baseUrl`, no trailing slash) and `config/brand.example.json` to `config/brand.json`. The brand fields:
+Copy `config/app.example.json` to `config/app.json` (`port`; `baseUrl`, no trailing slash; `plannerRefreshSeconds`, how often an open planner checks for changes, a whole number from 5 to 300) and `config/brand.example.json` to `config/brand.json`. The brand fields:
 
 | Field | Meaning |
 |---|---|

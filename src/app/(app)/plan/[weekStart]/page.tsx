@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { PlanView } from "@/components/plan/plan-view";
 import { requireMember } from "@/lib/auth/session";
+import { getAppConfig } from "@/lib/config";
 import { isCalendarDate } from "@/lib/dates";
 import { defaultPlannerWeek, isWeekStart, localToday, weekStartFor } from "@/lib/time/week";
 import { getWeek } from "@/modules/meal/meal-service";
-import { listMembers } from "@/modules/member/member-service";
 
 export default async function PlanWeekPage({ params }: { params: Promise<{ weekStart: string }> }) {
   const { weekStart } = await params;
@@ -15,11 +15,12 @@ export default async function PlanWeekPage({ params }: { params: Promise<{ weekS
   if (!isWeekStart(weekStart, weekStartDay)) redirect(`/plan/${weekStartFor(weekStart, weekStartDay)}`);
 
   const today = localToday(now);
-  const [week, members] = await Promise.all([getWeek(member.householdId, weekStart), listMembers(member.householdId)]);
+  const week = await getWeek(member.householdId, weekStart);
   return (
     <PlanView
+      key={weekStart}
       week={week}
-      members={members.map(({ id, name, kcalTarget, proteinTargetG }) => ({ id, name, kcalTarget, proteinTargetG }))}
+      refreshSeconds={getAppConfig().plannerRefreshSeconds}
       today={today}
       currentWeekStart={weekStartFor(today, weekStartDay)}
     />

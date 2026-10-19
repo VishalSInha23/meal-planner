@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MemberDayNutrition } from "@/modules/meal/meal-nutrition";
-import { changeFailure, longDay, missingNote, nutritionSentence, plannedLabel, shortDay, weekRange, weekTag } from "./plan-format.ts";
+import { changeFailure, copiedLabel, longDay, missingNote, nutritionSentence, plannedLabel, shortDay, weekRange, weekTag } from "./plan-format.ts";
 
 const day: MemberDayNutrition = {
   memberId: "m",
@@ -72,18 +72,42 @@ describe("changeFailure", () => {
     expect(changeFailure({ status: 409, code: "dish_already_in_meal", message: "x" }, "add")).toEqual({
       message: "Already in this meal",
       refresh: true,
+      conflict: false,
     });
     expect(changeFailure({ status: 404, code: "not_found", message: "x" }, "dish")).toEqual({
       message: "This was just changed by someone else",
       refresh: true,
+      conflict: false,
+    });
+  });
+
+  it("maps meal_dish_changed to a conflict the person chooses about, and refreshes", () => {
+    expect(changeFailure({ status: 409, code: "meal_dish_changed", message: "x" }, "dish")).toEqual({
+      message: "Someone else changed this just now",
+      refresh: true,
+      conflict: true,
     });
   });
 
   it("shows the API message for anything else", () => {
-    expect(changeFailure({ status: 500, code: "internal", message: "Boom" }, "dish")).toEqual({ message: "Boom", refresh: false });
+    expect(changeFailure({ status: 500, code: "internal", message: "Boom" }, "dish")).toEqual({ message: "Boom", refresh: false, conflict: false });
     expect(changeFailure({ status: 404, code: "not_found", message: "Dish not found" }, "add")).toEqual({
       message: "Dish not found",
       refresh: false,
+      conflict: false,
     });
+    expect(changeFailure({ status: 409, code: "meal_dish_changed", message: "Nope" }, "add")).toEqual({
+      message: "Nope",
+      refresh: false,
+      conflict: false,
+    });
+  });
+});
+
+describe("copiedLabel", () => {
+  it("says what a copy added", () => {
+    expect(copiedLabel(0)).toBe("Nothing new to copy");
+    expect(copiedLabel(1)).toBe("Added 1 dish");
+    expect(copiedLabel(5)).toBe("Added 5 dishes");
   });
 });

@@ -11,9 +11,8 @@ export const PUT = route<Params>(
     const member = await requireMember();
     const mealDishId = await uuidParam(params, "id");
     const memberId = await uuidParam(params, "memberId");
-    const { eats } = await parseBody(request, setMealDishMemberSchema);
-    await setMealDishMember(member.householdId, mealDishId, memberId, eats);
-    return Response.json({ mealDishId, memberId, eats });
+    const { eats, version } = await parseBody(request, setMealDishMemberSchema);
+    return Response.json(await setMealDishMember(member.householdId, mealDishId, memberId, eats, version));
   },
   { route: "/api/meal-dishes/[id]/members/[memberId]" },
 );

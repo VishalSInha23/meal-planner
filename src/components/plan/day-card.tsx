@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import type { MemberDayNutrition } from "@/modules/meal/meal-nutrition";
 import type { Meal } from "@/modules/meal/meal-schema";
 import type { MealSlot } from "@/modules/meal-slot/meal-slot-schema";
+import { CopyDayDialog } from "./copy-day-dialog";
 import { missingNote, nutritionSentence, shortDay, type NutritionTargets } from "./plan-format";
 
 export interface DayMember extends NutritionTargets {
@@ -18,14 +19,20 @@ export interface DayCardProps {
   members: DayMember[];
   nutrition: MemberDayNutrition[];
   onOpenSlot: (slotId: string) => void;
+  reload: () => Promise<void>;
 }
 
-export function DayCard({ date, isToday, mealSlots, meals, members, nutrition, onOpenSlot }: DayCardProps) {
+export function DayCard({ date, isToday, mealSlots, meals, members, nutrition, onOpenSlot, reload }: DayCardProps) {
   const names = new Map(members.map((member) => [member.id, member.name]));
   return (
     <Card
       title={shortDay(date)}
-      actions={isToday ? <span className="rounded-md border-[1.5px] border-ink px-2 font-semibold">Today</span> : undefined}
+      actions={
+        <div className="flex items-center gap-2">
+          {isToday && <span className="rounded-md border-[1.5px] border-ink px-2 font-semibold">Today</span>}
+          <CopyDayDialog date={date} reload={reload} />
+        </div>
+      }
     >
       <ul className="flex flex-col gap-2">
         {mealSlots.map((slot) => {
