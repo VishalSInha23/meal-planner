@@ -6,11 +6,13 @@ import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
 import type { HouseholdOverview } from "@/modules/household/household-schema";
 import type { MemberWithSlots } from "@/modules/member/member-schema";
+import type { Units } from "@/modules/user-preference/user-preference-schema";
 import { MemberDialog } from "./member-dialog";
 
 export interface SettingsMembersCardProps {
   overview: HouseholdOverview;
   viewer: MemberWithSlots;
+  units: Units;
   reload: () => Promise<void>;
 }
 
@@ -26,7 +28,7 @@ function summary(member: MemberWithSlots, overview: HouseholdOverview): string {
   return parts.join(" · ");
 }
 
-export function SettingsMembersCard({ overview, viewer, reload }: SettingsMembersCardProps) {
+export function SettingsMembersCard({ overview, viewer, units, reload }: SettingsMembersCardProps) {
   const [open, setOpen] = useState<Open>(null);
   const editing = open && open !== "new" ? (overview.members.find((member) => member.id === open) ?? null) : null;
   return (
@@ -67,6 +69,7 @@ export function SettingsMembersCard({ overview, viewer, reload }: SettingsMember
           member={editing}
           overview={overview}
           viewer={viewer}
+          units={units}
           reload={reload}
           onClose={() => setOpen(null)}
         />

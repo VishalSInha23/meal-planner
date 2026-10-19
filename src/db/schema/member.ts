@@ -20,6 +20,10 @@ export const member = pgTable(
     dateOfBirth: date("date_of_birth", { mode: "string" }),
     kcalTarget: integer("kcal_target"),
     proteinTargetG: numeric("protein_target_g", { precision: 4, scale: 1 }),
+    heightCm: numeric("height_cm", { precision: 4, scale: 1 }),
+    weightKg: numeric("weight_kg", { precision: 4, scale: 1 }),
+    activityLevel: text("activity_level", { enum: ["sedentary", "light", "moderate", "active", "very_active"] }),
+    goal: text("goal", { enum: ["lose", "maintain", "gain"] }),
     isAdmin: boolean("is_admin").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
@@ -30,6 +34,8 @@ export const member = pgTable(
   (table) => [
     index("member_household_id_idx").on(table.householdId),
     check("member_sex_check", sql`${table.sex} in ('male', 'female')`),
+    check("member_activity_level_check", sql`${table.activityLevel} in ('sedentary', 'light', 'moderate', 'active', 'very_active')`),
+    check("member_goal_check", sql`${table.goal} in ('lose', 'maintain', 'gain')`),
     check("member_age_check", sql`${table.ageBand} is not null or ${table.dateOfBirth} is not null`),
   ],
 );

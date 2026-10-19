@@ -11,8 +11,10 @@ import { localToday } from "@/lib/time/week";
 import { apiRequest } from "@/lib/http/api-client";
 import type { HouseholdOverview } from "@/modules/household/household-schema";
 import type { MemberWithSlots } from "@/modules/member/member-schema";
+import type { Units } from "@/modules/user-preference/user-preference-schema";
 import { draftFromMember, emptyMemberDraft, validateMemberDraft, type FieldErrors } from "./member-draft";
 import { MemberForm } from "./member-form";
+import { SuggestTargets } from "./suggest-targets";
 import { rowMessage, useApiAction } from "./use-api-action";
 
 export interface MemberDialogProps {
@@ -20,23 +22,25 @@ export interface MemberDialogProps {
   member: MemberWithSlots | null;
   overview: HouseholdOverview;
   viewer: MemberWithSlots;
+  // The signed-in user's height and weight units.
+  units: Units;
   onClose: () => void;
   reload: () => Promise<void>;
 }
 
-export function MemberDialog({ member, overview, viewer, onClose, reload }: MemberDialogProps) {
+export function MemberDialog({ member, overview, viewer, units, onClose, reload }: MemberDialogProps) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent title={member ? member.name : "Add member"}>
-        <MemberDialogBody member={member} overview={overview} viewer={viewer} onClose={onClose} reload={reload} />
+        <MemberDialogBody member={member} overview={overview} viewer={viewer} units={units} onClose={onClose} reload={reload} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function MemberDialogBody({ member, overview, viewer, onClose, reload }: MemberDialogProps) {
+function MemberDialogBody({ member, overview, viewer, units, onClose, reload }: MemberDialogProps) {
   const slots = overview.mealSlots.map((slot) => ({ id: slot.id, name: slot.name }));
-  const [draft, setDraft] = useState(() => (member ? draftFromMember(member) : emptyMemberDraft(slots.map((slot) => slot.id))));
+  const [draft, setDraft] = useState(() => (member ? draftFromMember(member, units) : emptyMemberDraft(slots.map((slot) => slot.id))));
   const [isAdmin, setIsAdmin] = useState(member?.isAdmin ?? false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [confirmingRemove, setConfirmingRemove] = useState(false);
@@ -63,7 +67,7 @@ function MemberDialogBody({ member, overview, viewer, onClose, reload }: MemberD
 
   async function save() {
     const today = localToday(new Date());
-    const result = validateMemberDraft(draft, today);
+    const result = validateMemberDraft(draft, today, units, member ?? undefined);
     if (!result.ok) {
       setErrors(result.fields);
       return;
@@ -117,7 +121,15 @@ function MemberDialogBody({ member, overview, viewer, onClose, reload }: MemberD
       }}
     >
       {!canEdit && <p className="text-ink/75">Only admins can change other members.</p>}
-      <MemberForm draft={draft} onChange={edit} slots={slots} errors={shown} disabled={!canEdit || saving.busy} />
+      <MemberForm
+        draft={draft}
+        onChange={edit}
+        units={units}
+        slots={slots}
+        errors={shown}
+        disabled={!canEdit || saving.busy}
+        targetsExtra={canEdit && <SuggestTargets draft={draft} onApply={edit} units={units} disabled={saving.busy} />}
+      />
       {showAdminSwitch && (
         <Switch
           label="Admin"

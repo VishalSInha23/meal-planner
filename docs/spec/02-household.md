@@ -19,5 +19,6 @@
 
 ## Members
 
-- Fields: name (1–40 characters), sex (male or female), age band or date of birth (at least one, see `01-accounts-and-onboarding.md`), daily kcal target (optional, 500–6000), daily protein target in grams (optional, 10–300), the slots they eat in (at least one).
+- Fields: name (1–40 characters), sex (male or female), age band or date of birth (at least one, see `01-accounts-and-onboarding.md`), daily kcal target (optional, 500–6000), daily protein target in grams (optional, 10–300), height in cm (optional, 50–250, one decimal), weight in kg (optional, 5–300, one decimal), activity level (optional: sedentary, light, moderate, active or very active), goal (optional: lose, maintain or gain), the slots they eat in (at least one).
+- Height and weight are always stored in cm and kg. The member form shows and accepts them in the signed-in user's units (see `06-look-and-settings.md`) and converts to metric before saving. An untouched height or weight keeps its stored value, so the rounding of the display never changes it. The activity level choices read: Sedentary "little or no exercise", Light "exercise 1–3 days a week", Moderate "3–5 days a week", Active "6–7 days a week", Very active "hard daily exercise or a physical job". The goal choices read Lose weight, Maintain, Gain weight.
 - Removing a member without an account also removes them from every meal they were ticked for.
