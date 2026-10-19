@@ -1,4 +1,4 @@
-import { and, asc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db/client";
 import { dish, dishIngredient, ingredient } from "@/db/schema";
 import type { DbOrTx } from "@/db/transaction";
@@ -13,7 +13,6 @@ function toDish(row: Row, ingredients: string[]): Dish {
     name: row.name,
     kcalPerServing: row.kcalPerServing,
     proteinGPerServing: row.proteinGPerServing === null ? null : Number(row.proteinGPerServing),
-    archivedAt: row.archivedAt ? row.archivedAt.toISOString() : null,
     ingredients,
   };
 }
@@ -43,7 +42,7 @@ async function withIngredients(rows: Row[], db: DbOrTx): Promise<Dish[]> {
   return rows.map((row) => toDish(row, byDish.get(row.id) ?? []));
 }
 
-// Sorted by name. Archived dishes are left out unless asked for.
+// Sorted by name.
 export async function list(householdId: string, filter: ListDishes, db: DbOrTx = getDb()): Promise<Dish[]> {
   const rows = await db
     .select()
@@ -51,7 +50,6 @@ export async function list(householdId: string, filter: ListDishes, db: DbOrTx =
     .where(
       and(
         eq(dish.householdId, householdId),
-        filter.archived ? undefined : isNull(dish.archivedAt),
         filter.query ? ilike(dish.name, `%${filter.query.replace(/[\\%_]/g, "\\$&")}%`) : undefined,
       ),
     )
@@ -94,10 +92,10 @@ export async function update(householdId: string, id: string, values: Partial<Di
   return rows.length > 0;
 }
 
-export async function setArchived(householdId: string, id: string, archived: boolean, db: DbOrTx = getDb()): Promise<boolean> {
+// Returns false when the household has no such dish. Its dish_ingredient rows go with it; ingredients stay.
+export async function remove(householdId: string, id: string, db: DbOrTx = getDb()): Promise<boolean> {
   const rows = await db
-    .update(dish)
-    .set({ archivedAt: archived ? new Date() : null, updatedAt: new Date() })
+    .delete(dish)
     .where(and(eq(dish.householdId, householdId), eq(dish.id, id)))
     .returning({ id: dish.id });
   return rows.length > 0;

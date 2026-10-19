@@ -1,7 +1,11 @@
 import { z } from "zod";
+import { normalizeName } from "@/lib/text";
 import { ingredientNameSchema } from "../ingredient/ingredient-schema.ts";
 
-export const dishNameSchema = z.string().trim().min(1, "Give the dish a name").max(80, "Use at most 80 characters");
+export const dishNameSchema = z
+  .string()
+  .transform(normalizeName)
+  .pipe(z.string().min(1, "Give the dish a name").max(80, "Use at most 80 characters"));
 export const kcalPerServingSchema = z.number().int("Use a whole number").min(0, "At least 0").max(5000, "At most 5000");
 export const proteinPerServingSchema = z
   .number()
@@ -34,10 +38,6 @@ export const updateDishSchema = z
 
 export const listDishesSchema = z.object({
   query: z.string().trim().default(""),
-  archived: z
-    .enum(["true", "false"], "Use true or false")
-    .default("false")
-    .transform((value) => value === "true"),
 });
 
 export type CreateDish = z.infer<typeof createDishSchema>;
@@ -53,8 +53,6 @@ export interface Dish {
   name: string;
   kcalPerServing: number | null;
   proteinGPerServing: number | null;
-  // Null for an active dish, otherwise when it was archived (ISO time).
-  archivedAt: string | null;
   // Sorted by name.
   ingredients: string[];
 }

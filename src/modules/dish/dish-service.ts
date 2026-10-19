@@ -5,11 +5,10 @@ import { resolveIngredientIds } from "../ingredient/ingredient-service.ts";
 import * as repository from "./dish-repository.ts";
 import type { CreateDish, Dish, ListDishes, UpdateDish } from "./dish-schema.ts";
 
-// A name clash becomes a 409 on the name field. The check runs after the failed transaction ended.
-async function dishConflict(householdId: string, name: string | undefined, error: unknown): Promise<unknown> {
+// A name clash becomes a 409 on the name field.
+function dishConflict(name: string | undefined, error: unknown): unknown {
   if (uniqueViolation(error) !== "dish_household_name_idx" || name === undefined) return error;
-  const archived = (await repository.findByName(householdId, name))?.archivedAt != null;
-  const message = archived ? "An archived dish with this name already exists" : "A dish with this name already exists";
+  const message = "A dish with this name already exists";
   return conflict(message, { name: message });
 }
 
@@ -33,7 +32,7 @@ export async function createDish(householdId: string, input: CreateDish): Promis
     });
     return await getDish(householdId, id);
   } catch (error) {
-    throw await dishConflict(householdId, input.name, error);
+    throw dishConflict(input.name, error);
   }
 }
 
@@ -46,11 +45,10 @@ export async function updateDish(householdId: string, id: string, input: UpdateD
     });
     return await getDish(householdId, id);
   } catch (error) {
-    throw await dishConflict(householdId, input.name, error);
+    throw dishConflict(input.name, error);
   }
 }
 
-export async function setDishArchived(householdId: string, id: string, archived: boolean): Promise<Dish> {
-  if (!(await repository.setArchived(householdId, id, archived))) throw notFound("Dish not found");
-  return getDish(householdId, id);
+export async function deleteDish(householdId: string, id: string): Promise<void> {
+  if (!(await repository.remove(householdId, id))) throw notFound("Dish not found");
 }

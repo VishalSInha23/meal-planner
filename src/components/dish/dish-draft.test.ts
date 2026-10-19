@@ -42,7 +42,7 @@ describe("dish text", () => {
   });
 
   it("fills the form from a dish", () => {
-    const dish = { id: "1", householdId: "h", name: "Dal", kcalPerServing: null, proteinGPerServing: 9, archivedAt: null, ingredients: ["Onion"] };
+    const dish = { id: "1", householdId: "h", name: "Dal", kcalPerServing: null, proteinGPerServing: 9, ingredients: ["Onion"] };
     expect(draftFromDish(dish)).toEqual({ name: "Dal", kcal: "", protein: "9", ingredients: ["Onion"] });
   });
 });

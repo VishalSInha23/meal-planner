@@ -1,0 +1,1 @@
+ALTER TABLE "dish" DROP COLUMN "archived_at";

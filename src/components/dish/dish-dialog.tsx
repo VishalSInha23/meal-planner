@@ -1,8 +1,9 @@
 "use client";
 
-import { Archive, ArchiveRestore, Check } from "lucide-react";
+import { Check, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useApiAction } from "@/components/household/use-api-action";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field-parts";
 import { IconButton } from "@/components/ui/icon-button";
@@ -34,9 +35,10 @@ function DishForm({ dish, onClose, reload }: DishDialogProps) {
   const [text, setText] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
   const saving = useApiAction();
-  const toggling = useApiAction();
-  const busy = saving.busy || toggling.busy;
-  const failure = saving.failure ?? toggling.failure;
+  const removing = useApiAction();
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const busy = saving.busy || removing.busy;
+  const failure = saving.failure ?? removing.failure;
   const shown = { ...(failure?.fields ?? {}), ...errors };
   // A failure naming no field (not found, server error) is shown beside the buttons.
   const formMessage = failure && Object.keys(failure.fields).length === 0 ? failure.message : undefined;
@@ -45,7 +47,7 @@ function DishForm({ dish, onClose, reload }: DishDialogProps) {
     setDraft({ ...draft, ...changes });
     setErrors({});
     saving.clear();
-    toggling.clear();
+    removing.clear();
   }
 
   async function save() {
@@ -66,13 +68,30 @@ function DishForm({ dish, onClose, reload }: DishDialogProps) {
     }
   }
 
-  async function toggleArchived() {
+  async function remove() {
     if (!dish) return;
-    const response = await toggling.run(() => apiRequest("POST", `/api/dishes/${dish.id}/${dish.archivedAt ? "restore" : "archive"}`));
+    const response = await removing.run(() => apiRequest("DELETE", `/api/dishes/${dish.id}`));
     if (response.ok) {
       reload();
       onClose();
     }
+  }
+
+  if (dish && confirmingDelete) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p>Delete {dish.name}? It is removed from every meal that has it. Its ingredients stay in the household list. This cannot be undone.</p>
+        {formMessage && <FieldError id="dish-delete-error">{formMessage}</FieldError>}
+        <div className="flex gap-2">
+          <Button variant="primary" loading={removing.busy} onClick={() => void remove()}>
+            Delete {dish.name}
+          </Button>
+          <IconButton label="Cancel" disabled={removing.busy} onClick={() => setConfirmingDelete(false)}>
+            <X size={20} aria-hidden="true" />
+          </IconButton>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -84,7 +103,6 @@ function DishForm({ dish, onClose, reload }: DishDialogProps) {
         void save();
       }}
     >
-      {dish?.archivedAt && <p className="text-ink/75">This dish is archived. Restore it to use it again.</p>}
       <TextField label="Name" value={draft.name} onChange={(event) => edit({ name: event.target.value })} error={shown.name} disabled={busy} />
       <TextField
         label="Kcal per serving"
@@ -117,8 +135,8 @@ function DishForm({ dish, onClose, reload }: DishDialogProps) {
           <Check size={20} aria-hidden="true" />
         </IconButton>
         {dish && (
-          <IconButton label={dish.archivedAt ? "Restore" : "Archive"} loading={toggling.busy} disabled={busy} onClick={() => void toggleArchived()}>
-            {dish.archivedAt ? <ArchiveRestore size={20} aria-hidden="true" /> : <Archive size={20} aria-hidden="true" />}
+          <IconButton label="Delete dish" disabled={busy} onClick={() => setConfirmingDelete(true)}>
+            <Trash2 size={20} aria-hidden="true" />
           </IconButton>
         )}
       </div>

@@ -36,6 +36,20 @@
       "when": 1792379315260,
       "tag": "0004_overconfident_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792381290238,
+      "tag": "0005_normalize_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792381410276,
+      "tag": "0006_sparkling_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

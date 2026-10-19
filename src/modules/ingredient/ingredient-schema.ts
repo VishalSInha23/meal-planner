@@ -1,6 +1,10 @@
 import { z } from "zod";
+import { normalizeName } from "@/lib/text";
 
-export const ingredientNameSchema = z.string().trim().min(1, "Give the ingredient a name").max(60, "Use at most 60 characters");
+export const ingredientNameSchema = z
+  .string()
+  .transform(normalizeName)
+  .pipe(z.string().min(1, "Give the ingredient a name").max(60, "Use at most 60 characters"));
 
 export const ingredientSearchSchema = z.object({ query: z.string().trim().default("") });
 

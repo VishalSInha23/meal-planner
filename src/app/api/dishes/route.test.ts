@@ -13,16 +13,13 @@ const signInAs = (id: string) => getSession.mockResolvedValue({ user: { id, name
 
 import { GET as listIngredients } from "../ingredients/route.ts";
 import { GET, POST } from "./route.ts";
-import { GET as getOne, PATCH } from "./[id]/route.ts";
-import { POST as archive } from "./[id]/archive/route.ts";
-import { POST as restore } from "./[id]/restore/route.ts";
+import { DELETE, GET as getOne, PATCH } from "./[id]/route.ts";
 
 const list = (query = "") => GET(jsonRequest("GET", `/api/dishes${query}`), paramsOf());
 const post = (body: unknown) => POST(jsonRequest("POST", "/api/dishes", body), paramsOf());
 const patch = (id: string, body: unknown) => PATCH(jsonRequest("PATCH", `/api/dishes/${id}`, body), paramsOf(id));
 const read = (id: string) => getOne(jsonRequest("GET", `/api/dishes/${id}`), paramsOf(id));
-const archiveDish = (id: string) => archive(jsonRequest("POST", `/api/dishes/${id}/archive`), paramsOf(id));
-const restoreDish = (id: string) => restore(jsonRequest("POST", `/api/dishes/${id}/restore`), paramsOf(id));
+const del = (id: string) => DELETE(jsonRequest("DELETE", `/api/dishes/${id}`), paramsOf(id));
 const suggest = (query: string) => listIngredients(jsonRequest("GET", `/api/ingredients?query=${encodeURIComponent(query)}`), paramsOf());
 const names = async (response: Response) => ((await response.json()) as { name: string }[]).map((item) => item.name);
 
@@ -53,7 +50,6 @@ describe("/api/dishes", () => {
       name: "Dal",
       kcalPerServing: 250,
       proteinGPerServing: 12.5,
-      archivedAt: null,
       householdId: fixture.householdId,
       ingredients: ["Lentils", "Onion"],
     });
@@ -72,14 +68,27 @@ describe("/api/dishes", () => {
   it("lists dishes by name with a search, and reads one", async () => {
     await signedIn();
     await post({ name: "Rice", ingredients: ["Rice"] });
-    const dal = await (await post({ name: "dal tadka", ingredients: ["Lentils"] })).json();
+    const dal = await (await post({ name: "Dal tadka", ingredients: ["Lentils"] })).json();
     await post({ name: "Aloo", ingredients: [] });
 
-    expect(await names(await list())).toEqual(["Aloo", "dal tadka", "Rice"]);
-    expect(await names(await list("?query=AL"))).toEqual(["Aloo", "dal tadka"]);
+    expect(await names(await list())).toEqual(["Aloo", "Dal tadka", "Rice"]);
+    expect(await names(await list("?query=AL"))).toEqual(["Aloo", "Dal tadka"]);
     expect(await names(await list("?query=%25"))).toEqual([]);
     expect((await (await list("?query=tadka")).json())[0].ingredients).toEqual(["Lentils"]);
     expect(await (await read(dal.id)).json()).toEqual(dal);
+  });
+
+  it("saves names with dashes as spaces and a capital first letter, so a differently typed name is a duplicate and search ignores case", async () => {
+    await signedIn();
+    const created = await post({ name: "dal-makhani", ingredients: ["spring-onion"] });
+    expect(created.status).toBe(201);
+    expect(await created.json()).toMatchObject({ name: "Dal makhani", ingredients: ["Spring onion"] });
+
+    const duplicate = await post({ name: "Dal Makhani" });
+    expect(duplicate.status).toBe(409);
+    expect((await duplicate.json()).error.fields.name).toBe("A dish with this name already exists");
+    expect(await names(await list("?query=DAL"))).toEqual(["Dal makhani"]);
+    expect((await post({ name: "---" })).status).toBe(400);
   });
 
   it("edits fields and replaces ingredients", async () => {
@@ -97,9 +106,9 @@ describe("/api/dishes", () => {
     expect((await patch(dish.id, {})).status).toBe(400);
   });
 
-  it("answers 409 on the name field for a duplicate, saying when the other dish is archived", async () => {
+  it("answers 409 on the name field for a duplicate", async () => {
     await signedIn();
-    const dal = await (await post({ name: "Dal" })).json();
+    await post({ name: "Dal" });
     const other = await (await post({ name: "Rice" })).json();
 
     const duplicate = await post({ name: "  dal " });
@@ -108,32 +117,23 @@ describe("/api/dishes", () => {
     const renamed = await patch(other.id, { name: "DAL" });
     expect(renamed.status).toBe(409);
     expect((await renamed.json()).error.fields.name).toBe("A dish with this name already exists");
-
-    await archiveDish(dal.id);
-    const archivedClash = await post({ name: "Dal" });
-    expect(archivedClash.status).toBe(409);
-    expect((await archivedClash.json()).error.fields.name).toBe("An archived dish with this name already exists");
-    expect((await patch(other.id, { name: "dal" })).status).toBe(409);
     expect((await patch(other.id, { name: "Rice" })).status).toBe(200);
   });
 
-  it("hides an archived dish from the default list until restored", async () => {
+  it("deletes a dish, keeps its ingredients and frees the name", async () => {
     await signedIn();
-    const dal = await (await post({ name: "Dal" })).json();
+    const dal = await (await post({ name: "Dal", ingredients: ["Lentils", "Onion"] })).json();
     await post({ name: "Rice" });
 
-    const archived = await archiveDish(dal.id);
-    expect(archived.status).toBe(200);
-    expect((await archived.json()).archivedAt).not.toBeNull();
+    expect((await del(dal.id)).status).toBe(204);
     expect(await names(await list())).toEqual(["Rice"]);
-    const all = await (await list("?archived=true")).json();
-    expect(all.map((item: { name: string }) => item.name)).toEqual(["Dal", "Rice"]);
-    expect(all[0].archivedAt).not.toBeNull();
-    expect((await read(dal.id)).status).toBe(200);
+    expect((await read(dal.id)).status).toBe(404);
+    expect((await del(dal.id)).status).toBe(404);
+    expect(await names(await suggest(""))).toEqual(["Lentils", "Onion"]);
+    expect(await getDb().select().from(dishIngredient)).toHaveLength(0);
 
-    const restored = await restoreDish(dal.id);
-    expect((await restored.json()).archivedAt).toBeNull();
-    expect(await names(await list())).toEqual(["Dal", "Rice"]);
+    expect((await post({ name: "dal", ingredients: ["lentils"] })).status).toBe(201);
+    expect(await getDb().select().from(ingredient)).toHaveLength(2);
   });
 
   it("orders ingredient suggestions prefix first, then contains, at most 10", async () => {
@@ -157,11 +157,10 @@ describe("/api/dishes", () => {
     await signedIn("a");
     expect((await read(theirs.id)).status).toBe(404);
     expect((await patch(theirs.id, { name: "Mine" })).status).toBe(404);
-    expect((await archiveDish(theirs.id)).status).toBe(404);
-    expect((await restoreDish(theirs.id)).status).toBe(404);
+    expect((await del(theirs.id)).status).toBe(404);
     expect((await read(unknownId())).status).toBe(404);
     expect((await read("not-a-uuid")).status).toBe(404);
-    expect(await names(await list("?archived=true"))).toEqual([]);
+    expect(await names(await list())).toEqual([]);
     expect(await names(await suggest("saf"))).toEqual([]);
     // The same name is free in this household.
     expect((await post({ name: "Secret", ingredients: ["saffron"] })).status).toBe(201);
@@ -190,7 +189,6 @@ describe("/api/dishes", () => {
     }
     const bad = await post({ name: "Dal", kcalPerServing: 9999, proteinGPerServing: 1.25 });
     expect(Object.keys((await bad.json()).error.fields).sort()).toEqual(["kcalPerServing", "proteinGPerServing"]);
-    expect((await list("?archived=maybe")).status).toBe(400);
 
     for (const body of [
       { name: "a".repeat(80), kcalPerServing: 0, proteinGPerServing: 0 },

@@ -3,8 +3,9 @@
 ## Dish
 
 - Fields: name (required, 1–80 characters, unique in the household ignoring case and surrounding spaces), kcal per serving (optional, whole number 0–5000), protein per serving in grams (optional, 0–300, one decimal place), ingredients (zero or more).
-- Anyone in the household can add, edit, archive and restore dishes.
-- Dishes are archived, not deleted. An archived dish is hidden from the dish list (unless "show archived" is on) and from the dish picker in the planner, but stays in every meal that already has it. Restoring brings it back. An archived dish's name is still taken.
+- Dish and ingredient names are saved with dashes turned into spaces and a capital first letter ("aloo-gobi" becomes "Aloo gobi").
+- Anyone in the household can add, edit and delete dishes.
+- Deleting a dish removes it from the dish list and from any meal that has it. Its ingredients stay in the household list. The name can be used again.
 - The dish list is sorted by name and can be searched by name.
 
 ## Ingredients

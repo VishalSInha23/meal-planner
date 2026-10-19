@@ -12,8 +12,6 @@ export const dish = pgTable(
     name: text("name").notNull(),
     kcalPerServing: integer("kcal_per_serving"),
     proteinGPerServing: numeric("protein_g_per_serving", { precision: 4, scale: 1 }),
-    // Archived dishes keep their name, so the unique index covers them too.
-    archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
       .notNull()
