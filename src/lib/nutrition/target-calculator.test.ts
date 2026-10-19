@@ -86,13 +86,27 @@ describe("suggestTargets limits", () => {
     expect(labels).toContain("Protein limited to the 10 g minimum");
   });
 
+  // BMR = 3000 + 1562.5 - 90 + 5 = 4477.5; * 1.9 = 8507.25; * 1.1 = 9357.98, limited to 6000; protein 1.8 * 300 = 540, limited to 300
+  it("limits energy to the 6000 kcal maximum", () => {
+    const result = ok({ sex: "male", ageYears: 18, heightCm: 250, weightKg: 300, activityLevel: "very_active", goal: "gain" });
+    expect(result).toMatchObject({ kcal: 6000, proteinG: 300 });
+    expect(result.steps.map((step) => step.label)).toContain("Energy limited to the 6000 kcal maximum");
+  });
+
   it("adds no limit note inside the ranges", () => {
     expect(ok(man).steps.some((step) => step.label.includes("limited"))).toBe(false);
   });
 });
 
 describe("suggestTargets under 18", () => {
-  // 88.5 - 495.2 + 1.26 * (694.2 + 1156.84) + 20 = 1944.35 -> 1940; protein 0.95 * 26 = 24.7 -> 25
+  // Boy 17, 200 cm, 150 kg, very active: 88.5 - 1052.3 + 1.42 * (4005 + 1806) + 25 = 7312.82, limited to 6000
+  it("limits a teenager's energy to the 6000 kcal maximum", () => {
+    const result = ok({ sex: "male", ageYears: 17, heightCm: 200, weightKg: 150, activityLevel: "very_active", goal: "maintain" });
+    expect(result).toMatchObject({ kcal: 6000, method: "dri_eer" });
+    expect(result.steps.map((step) => step.label)).toContain("Energy limited to the 6000 kcal maximum");
+  });
+
+  // 88.5 - 495.2 + 1.26 * (694.2 + 1155.84) + 20 = 1944.35 -> 1940; protein 0.95 * 26 = 24.7 -> 25
   it("uses the boy equation for ages 3 to 8", () => {
     const boy: TargetInput = {
       sex: "male",
